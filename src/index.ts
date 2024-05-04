@@ -30,8 +30,8 @@ const pword = process.env.DRUPAL_PASSWORD;
 
 const app = new Hono();
 
-const loginValues = await loginDrupal(drupalUrl, uname, pword);
-console.log(loginValues);
+// const loginValues = await loginDrupal(drupalUrl, uname, pword);
+// console.log(loginValues);
 
 // Routes
 app.get("/", (c) => {
@@ -49,11 +49,13 @@ app.get("/hello/:name", (c) => {
   `);
 });
 
-app.post("/api/submit/:node", (c) => {
+app.post("/api/submit", async (c) => {
+  const body = await c.req.json();
   return c.text(`{
     status: "success",
-    id: ${c.req.param("node")},
-    message: "${c.req.param("node")} submitted successfully"
+    node: ${body.node},
+    session_id: ${body.session_id},
+    question: "${body.question}"
   }`);
 });
 
