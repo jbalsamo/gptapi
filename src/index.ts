@@ -47,6 +47,13 @@ const app = new Hono();
 app.use(timing());
 
 // Functions
+const findSimilarAnswers = async (
+  node: any,
+  session_id: any,
+  question: any
+) => {
+  let systemPrompt = ``;
+};
 
 const answerQuestions = async (node: any, session_id: any, question: any) => {
   // get answers from Azure AI
@@ -103,6 +110,7 @@ const answerQuestions = async (node: any, session_id: any, question: any) => {
       "The summary should be readable at an 7th grade reading level and explain any jargon or domain specific language that may need clarification.\n" +
       "Please ensure that the response avoids technical jargon or domain-specific language and provides explanations or simplifications where necessary.\n" +
       "If the summary contains any fringe research, homeopathic medicine, or medically untested information, it should be annotated as such in the summary.\n";
+
     dataSummary = await submitQuestionGeneralGPT(
       summaryPrompt,
       systemPrompt,
@@ -141,7 +149,15 @@ app.get("/hello/:name", (c) => {
   `);
 });
 
-app.post("/api/submit", async (c) => {
+app.post("/api/find-similar", async (c) => {
+  const body = await c.req.json();
+  console.log(body);
+  return c.json({
+    status: "success"
+  });
+});
+
+app.post("/api/get-answers", async (c) => {
   const body = await c.req.json();
   setMetric(c, "region", "us-east-1");
 
@@ -154,7 +170,7 @@ app.post("/api/submit", async (c) => {
     session_id: body.session_id,
     question: body.question,
     answerDocs: data.dataDocs.answer,
-    citationDocs: data.dataDocs.citations,
+    //citationDocs: data.dataDocs.citations,
     answerPMA: data.dataPMA.answer,
     answerGPT: data.dataGPT.answer,
     answerSummary: data.dataSummary.answer
