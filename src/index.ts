@@ -151,7 +151,11 @@ app.get("/hello/:name", (c) => {
 
 app.post("/api/find-similar", async (c) => {
   const body = await c.req.json();
-  console.log(body);
+  console.log(
+    body.entity.nid,
+    "\n",
+    JSON.stringify(body.entity.field_enter_question[0])
+  );
   return c.json({
     status: "success"
   });
