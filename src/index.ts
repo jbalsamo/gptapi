@@ -7,19 +7,19 @@ import { Hono } from "hono";
 import { endTime, setMetric, startTime, timing } from "hono/timing";
 import {
   submitQuestionDocuments,
-  submitQuestionGeneralGPT
+  submitQuestionGeneralGPT,
 } from "./libraries/azureHelpers.js";
 import {
   loginDrupal,
   logoutDrupal,
-  post2Drupal
+  post2Drupal,
 } from "./libraries/drupalHelpers.js";
 
 // Load environment variables
 config({ path: "/etc/gptbot/.env" });
 
 // Constants
-const systemPrompt = `
+const answerPrompt = `
   *     answer question as a medical professional.
   *     If the question is not medical, health, legally, or psychologically related then inform the user that you can only answer questions in one of those topics.
   *     The answer should be readable at an 7th grade reading level.
@@ -39,6 +39,8 @@ const azSearchUrl = process.env.AZ_SEARCH_URL;
 const azSearchKey = process.env.AZ_SEARCH_KEY;
 const azIndexName = process.env.AZ_INDEX_NAME;
 const azPMIndexName = process.env.AZ_PM_INDEX_NAME;
+const azAnswersIndexName = "vet";
+
 const uname = process.env.DRUPAL_USERNAME;
 const pword = process.env.DRUPAL_PASSWORD;
 
@@ -47,12 +49,45 @@ const app = new Hono();
 app.use(timing());
 
 // Functions
-const findSimilarAnswers = async (
-  node: any,
-  session_id: any,
-  question: any
-) => {
-  let systemPrompt = ``;
+const findSimilarAnswers = async (node: any, question: string) => {
+  const systemPrompt = `
+  You are an AI assistant that helps people extract the top 2 relevant question and answer pairs that are similar to the question I enter.
+
+  ### Output Format:
+  Return a JSON  with an array with the 3 top items, each containing the fields nid, category, question, answer.
+
+  ### Example Output
+  [
+    {
+       nid: nid_1,
+       category: category_1,
+       question: question_1,
+       answer: answer_1
+    },
+    {
+       nid: nid_2,
+       category: category_2,
+       question: question_2,
+       answer: answer_2
+    }
+  ]
+  `;
+  const userPrompt = `
+    Find 3 most relevant questions and answers similar to: '${question}'\nReturn it as a JSON Array with 3 json objects containing the nid,question,relevance,category,and answer. Do not use any markup and just return the string.
+  `;
+
+  let similarAnswers = await submitQuestionDocuments(
+    userPrompt,
+    systemPrompt,
+    azBaseUrl,
+    azApiKey,
+    azSearchUrl,
+    azSearchKey,
+    azAnswersIndexName
+  );
+  console.log(similarAnswers.answer);
+
+  return similarAnswers.answer;
 };
 
 const answerQuestions = async (node: any, session_id: any, question: any) => {
@@ -60,7 +95,7 @@ const answerQuestions = async (node: any, session_id: any, question: any) => {
   let summaryPrompt, dataSummary;
   let dataDocs = await submitQuestionDocuments(
     question,
-    systemPrompt,
+    answerPrompt,
     azBaseUrl,
     azApiKey,
     azSearchUrl,
@@ -70,7 +105,7 @@ const answerQuestions = async (node: any, session_id: any, question: any) => {
 
   let dataPMA = await submitQuestionDocuments(
     question,
-    systemPrompt,
+    answerPrompt,
     azBaseUrl,
     azApiKey,
     azSearchUrl,
@@ -80,7 +115,7 @@ const answerQuestions = async (node: any, session_id: any, question: any) => {
 
   let dataGPT = await submitQuestionGeneralGPT(
     question,
-    systemPrompt,
+    answerPrompt,
     azBaseUrl,
     azApiKey
   );
@@ -113,7 +148,7 @@ const answerQuestions = async (node: any, session_id: any, question: any) => {
 
     dataSummary = await submitQuestionGeneralGPT(
       summaryPrompt,
-      systemPrompt,
+      answerPrompt,
       azBaseUrl,
       azApiKey
     );
@@ -129,7 +164,7 @@ const answerQuestions = async (node: any, session_id: any, question: any) => {
     dataDocs: dataDocs,
     dataPMA: dataPMA,
     dataGPT: dataGPT,
-    dataSummary: dataSummary
+    dataSummary: dataSummary,
   };
 };
 
@@ -151,9 +186,15 @@ app.get("/hello/:name", (c) => {
 
 app.post("/api/find-similar", async (c) => {
   const body = await c.req.json();
-  console.log(JSON.stringify(body));
+  let nid = body.entity.nid[0].value;
+  let question = body.entity.field_enter_question[0].value;
+
+  let similarAnswers = await findSimilarAnswers(nid, question);
+
   return c.json({
-    status: "success"
+    status: "success",
+    nid: nid,
+    question: question,
   });
 });
 
@@ -173,7 +214,7 @@ app.post("/api/get-answers", async (c) => {
     //citationDocs: data.dataDocs.citations,
     answerPMA: data.dataPMA.answer,
     answerGPT: data.dataGPT.answer,
-    answerSummary: data.dataSummary.answer
+    answerSummary: data.dataSummary.answer,
   });
 });
 
@@ -182,5 +223,5 @@ console.log(`Server is running on port http://localhost:${port}`);
 
 serve({
   fetch: app.fetch,
-  port
+  port,
 });

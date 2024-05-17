@@ -1,8 +1,5 @@
-```
-npm install
-npm run dev
-```
+# d2gptAPI
 
-```
-open http://localhost:3000
-```
+## Description
+
+This API acts as a service for responding to drupal API requests and then updating the Drupal node that made the request.

@@ -22,39 +22,39 @@ export const submitQuestionGeneralGPT = async (
   let errorMessage = "";
   let url =
     base +
-    "openai/deployments/BMI_pilotGPT/chat/completions?api-version=2023-05-15";
+    "openai/deployments/BMI_pilotGPT/chat/completions?api-version=2024-02-15-preview";
   let headers = {
     "Content-Type": "application/json",
-    "api-key": apiKey
+    "api-key": apiKey,
   };
   let body = {
     messages: [
       {
         role: "system",
-        content: system
+        content: system,
       },
       {
         role: "user",
-        content: question
-      }
-    ]
+        content: question,
+      },
+    ],
   };
   try {
     let response = await fetch(url, {
       method: "POST",
       headers: headers,
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     });
     let data = await response.json();
     errorMessage = data.error || data;
-    let returnValue = {
-      "answer": data.choices[0].message.content
+    const returnValue = {
+      "answer": data.choices[0].message.content,
     };
     return returnValue;
   } catch (err) {
     let returnValue = {
       "code": errorMessage.code,
-      "answer": errorMessage.message
+      "answer": errorMessage.message,
     };
     return returnValue;
   }
@@ -87,7 +87,7 @@ export const submitQuestionDocuments = async (
     "openai/deployments/BMI_pilotGPT/extensions/chat/completions?api-version=2023-07-01-preview";
   let headers = {
     "Content-Type": "application/json",
-    "api-key": apiKey
+    "api-key": apiKey,
   };
   let body = {
     "dataSources": [
@@ -96,41 +96,59 @@ export const submitQuestionDocuments = async (
         "parameters": {
           "endpoint": searchEndpoint,
           "key": searchKey,
-          "indexName": indexName
-        }
-      }
+          "indexName": indexName,
+          "filter": null,
+          "strictness": "2",
+          "semantic_configuration": "default",
+          "query_type": "semantic",
+          "top_n_documents": 5,
+          "fields_mapping": {},
+          "in_scope": true,
+          //"role_information": system,
+          "authentication": {
+            "type": "api_key",
+            "key": searchKey,
+          },
+          "stop": null,
+          "stream": true,
+        },
+      },
     ],
     messages: [
       {
         role: "system",
-        content: system
+        content: system,
       },
       {
         role: "user",
-        content: question
-      }
-    ]
+        content: question,
+      },
+    ],
+    "max_tokens": 1800,
   };
   try {
     let response = await fetch(url, {
       method: "POST",
       headers: headers,
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     });
     let data = await response.json();
     errorMessage = data.error || data;
+
     let returnValue = {
       citations: JSON.parse(data.choices[0].messages[0].content).citations,
-      answer: data.choices[0].messages[1].content
+      answer: data.choices[0].messages[1].content,
     };
     // returnValue.citations.forEach((element) => {
     //   console.log(element.title, "\n", element.url, "\n\n");
     // });
+    console.log(JSON.parse(data.choices[0].messages[0].content));
+
     return returnValue;
   } catch (err) {
     let returnValue = {
       "code": errorMessage.code,
-      "answer": errorMessage.message
+      "answer": errorMessage.message.answer,
     };
     return returnValue;
   }
