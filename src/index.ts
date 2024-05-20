@@ -196,7 +196,14 @@ app.post("/api/find-similar", async (c) => {
   endTime(c, "similar");
   // console.log(similarAnswers[0].question);
 
+  const { Cookie, csrf_token, logout_token } = await loginDrupal(
+    drupalUrl,
+    uname,
+    pword
+  );
+
   const similar2Post = {
+    "Cookie": Cookie,
     "field_similar_question_1": `
       "question": ${similarAnswers[0].question}\n
       "answer": ${similarAnswers[0].answer}
@@ -211,15 +218,11 @@ app.post("/api/find-similar", async (c) => {
     `,
   };
 
-  // console.log(similar2Post);
-
-  const { Cookie, csrf_token, logout_token } = await loginDrupal(
-    drupalUrl,
-    uname,
-    pword
-  );
+  console.log(similar2Post);
 
   let data = await postSimilar2Drupal(drupalUrl, csrf_token, nid, similar2Post);
+
+  console.log(data);
   // let data = { message: "Similar" };
 
   return c.json({

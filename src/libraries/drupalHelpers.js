@@ -190,10 +190,14 @@ export const postSimilar2Drupal = async (u, csrf, nid, result) => {
     body: body,
   });
 
-  let data = await response.json();
-  // console.log(data);
+  console.log(response);
 
-  return await data;
+  //let data = (await response.json()) || { "message": "SUCCESS" };
+  //console.log("🚀 ~ file: drupalHelpers.js:90 ~ post2Drupal ~ data:", data);
+
+  return await {
+    "status": "success",
+  };
 };
 
 /**

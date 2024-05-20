@@ -143,7 +143,7 @@ export const submitQuestionDocuments = async (
   } catch (err) {
     let returnValue = {
       "code": errorMessage.code,
-      "answer": errorMessage.message.answer,
+      "answer": errorMessage.message,
     };
     return returnValue;
   }
