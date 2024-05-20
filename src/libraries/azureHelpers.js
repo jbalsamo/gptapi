@@ -104,7 +104,6 @@ export const submitQuestionDocuments = async (
           "top_n_documents": 5,
           "fields_mapping": {},
           "in_scope": true,
-          //"role_information": system,
           "authentication": {
             "type": "api_key",
             "key": searchKey,
@@ -139,10 +138,6 @@ export const submitQuestionDocuments = async (
       citations: JSON.parse(data.choices[0].messages[0].content).citations,
       answer: data.choices[0].messages[1].content,
     };
-    // returnValue.citations.forEach((element) => {
-    //   console.log(element.title, "\n", element.url, "\n\n");
-    // });
-    console.log(JSON.parse(data.choices[0].messages[0].content));
 
     return returnValue;
   } catch (err) {

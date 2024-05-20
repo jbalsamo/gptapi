@@ -22,25 +22,25 @@ export const loginDrupal = async (u, uname, pword) => {
 
   let headersList = {
     "Accept": "*/*",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   };
 
   let bodyContent = JSON.stringify({
     "name": uname,
-    "pass": pword
+    "pass": pword,
   });
 
   let response = await fetch(logonUrl, {
     method: "POST",
     body: bodyContent,
-    headers: headersList
+    headers: headersList,
   });
 
   const cookie = await response.headers.get("Set-Cookie");
   const data = await response.json();
   const ret = {
     "Cookie": cookie,
-    ...data
+    ...data,
   };
   return await ret;
 };
@@ -58,12 +58,12 @@ export const getQuestions = async (u, csrf) => {
   let headersList = {
     Accept: "*/*",
     "Content-Type": "application/json",
-    "X-CSRF-Token": csrf
+    "X-CSRF-Token": csrf,
   };
 
   let response = await fetch(url, {
     method: "GET",
-    headers: headersList
+    headers: headersList,
   });
 
   const questions = await response.json();
@@ -85,7 +85,7 @@ export const post2Drupal = async (u, csrf, result) => {
     "Accept": "*/*",
     "X-CSRF-Token": csrf,
     "Cookie": result.Cookie,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   };
   let sources = "[";
   if (typeof result.citations !== "undefined" && result.citations.length > 0) {
@@ -104,49 +104,90 @@ export const post2Drupal = async (u, csrf, result) => {
   }
 
   let dedupSources = deduplicateArray(JSON.parse(sources), "title");
-  console.log(
-    "🚀 ~ file: drupalHelpers.js:99 ~ post2Drupal ~ dedupSources:",
-    dedupSources
-  );
 
   let body = JSON.stringify({
     "field_answer": [
       {
-        "value": result.answerGPT
-      }
+        "value": result.answerGPT,
+      },
     ],
     "field_answer_from_documents": [
       {
-        "value": result.answerDocs
-      }
+        "value": result.answerDocs,
+      },
     ],
     "field_answer_from_pubmed": [
       {
-        "value": result.answerPMA
-      }
+        "value": result.answerPMA,
+      },
     ],
     "field_answer_summary": [
       {
-        "value": result.answerSummary
-      }
+        "value": result.answerSummary,
+      },
     ],
     "field_sources": dedupSources,
     "field_state": [
       {
-        "value": "Under Review"
-      }
+        "value": "Under Review",
+      },
     ],
     "type": [
       {
-        "target_id": "question_page"
-      }
-    ]
+        "target_id": "question_page",
+      },
+    ],
   });
 
   let response = await fetch(url, {
     method: "PATCH",
     headers: headersList,
-    body: body
+    body: body,
+  });
+
+  let data = await response.json();
+  // console.log(data);
+
+  return await data;
+};
+
+export const postSimilar2Drupal = async (u, csrf, nid, result) => {
+  let url = u + `node/${nid}?_format=json`;
+
+  let headersList = {
+    "Accept": "*/*",
+    "X-CSRF-Token": csrf,
+    "Cookie": result.Cookie,
+    "Content-Type": "application/json",
+  };
+
+  let body = JSON.stringify({
+    "field_similar_question_1": [
+      {
+        "value": result.field_similar_question_1,
+      },
+    ],
+    "field_similar_question_2": [
+      {
+        "value": result.field_similar_question_2,
+      },
+    ],
+    "field_similar_question_3": [
+      {
+        "value": result.field_similar_question_3,
+      },
+    ],
+    "type": [
+      {
+        "target_id": "question_page",
+      },
+    ],
+  });
+
+  let response = await fetch(url, {
+    method: "PATCH",
+    headers: headersList,
+    body: body,
   });
 
   let data = await response.json();

@@ -13,6 +13,7 @@ import {
   loginDrupal,
   logoutDrupal,
   post2Drupal,
+  postSimilar2Drupal,
 } from "./libraries/drupalHelpers.js";
 
 // Load environment variables
@@ -73,7 +74,7 @@ const findSimilarAnswers = async (node: any, question: string) => {
   ]
   `;
   const userPrompt = `
-    Find 3 most relevant questions and answers similar to: '${question}'\nReturn it as a JSON Array with 3 json objects containing the nid,question,relevance,category,and answer. Do not use any markup and just return the string.
+    Find 3 most relevant questions and answers similar to: '${question}'\nReturn it as a JSON Array with 3 json objects containing the 'question' and 'answer'. Do not use any markdown and just return the string. Only return questions and answers that are between the '---' and where there are 'question:' and 'answer:' pairs, with the appropriate attribute name.
   `;
 
   let similarAnswers = await submitQuestionDocuments(
@@ -85,9 +86,9 @@ const findSimilarAnswers = async (node: any, question: string) => {
     azSearchKey,
     azAnswersIndexName
   );
-  console.log(similarAnswers.answer);
 
-  return similarAnswers.answer;
+  const parsedSimilarAnswers = JSON.parse(similarAnswers.answer);
+  return parsedSimilarAnswers;
 };
 
 const answerQuestions = async (node: any, session_id: any, question: any) => {
@@ -185,16 +186,43 @@ app.get("/hello/:name", (c) => {
 });
 
 app.post("/api/find-similar", async (c) => {
+  setMetric(c, "region", "us-east-1");
+  startTime(c, "similar");
   const body = await c.req.json();
   let nid = body.entity.nid[0].value;
   let question = body.entity.field_enter_question[0].value;
 
-  let similarAnswers = await findSimilarAnswers(nid, question);
+  const similarAnswers = await findSimilarAnswers(nid, question);
+  endTime(c, "similar");
+  // console.log(similarAnswers[0].question);
+
+  const similar2Post = {
+    "field_similar_question_1": `
+      "question": ${similarAnswers[0].question}\n
+      "answer": ${similarAnswers[0].answer}
+    `,
+    "field_similar_question_2": `
+      "question": ${similarAnswers[1].question}\n
+      "answer": ${similarAnswers[1].answer}
+    `,
+    "field_similar_question_3": `
+      "question": ${similarAnswers[2].question}\n
+      "answer": ${similarAnswers[2].answer}
+    `,
+  };
+
+  const { Cookie, csrf_token, logout_token } = await loginDrupal(
+    drupalUrl,
+    uname,
+    pword
+  );
+
+  //let data = await postSimilar2Drupal(drupalUrl, csrf_token, nid, similar2Post);
 
   return c.json({
     status: "success",
     nid: nid,
-    question: question,
+    data: data,
   });
 });
 
