@@ -211,13 +211,16 @@ app.post("/api/find-similar", async (c) => {
     `,
   };
 
+  //console.log(similar2Post);
+
   const { Cookie, csrf_token, logout_token } = await loginDrupal(
     drupalUrl,
     uname,
     pword
   );
 
-  //let data = await postSimilar2Drupal(drupalUrl, csrf_token, nid, similar2Post);
+  let data = await postSimilar2Drupal(drupalUrl, csrf_token, nid, similar2Post);
+  //let data = { message: "Similar" };
 
   return c.json({
     status: "success",
