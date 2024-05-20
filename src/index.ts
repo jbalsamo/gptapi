@@ -205,30 +205,35 @@ app.post("/api/find-similar", async (c) => {
   const similar2Post = {
     "Cookie": Cookie,
     "field_similar_question_1": `
-      "question": ${similarAnswers[0].question}\n
-      "answer": ${similarAnswers[0].answer}
+      ${similarAnswers[0].question}\n
+      ${similarAnswers[0].answer}
     `,
     "field_similar_question_2": `
-      "question": ${similarAnswers[1].question}\n
-      "answer": ${similarAnswers[1].answer}
+      ${similarAnswers[1].question}\n
+      ${similarAnswers[1].answer}
     `,
     "field_similar_question_3": `
-      "question": ${similarAnswers[2].question}\n
-      "answer": ${similarAnswers[2].answer}
+      ${similarAnswers[2].question}\n
+      ${similarAnswers[2].answer}
     `,
   };
 
   console.log(similar2Post);
 
-  let data = await postSimilar2Drupal(drupalUrl, csrf_token, nid, similar2Post);
+  const data = await postSimilar2Drupal(
+    drupalUrl,
+    csrf_token,
+    nid,
+    similar2Post
+  );
 
   console.log(data);
   // let data = { message: "Similar" };
+  const user = await logoutDrupal(drupalUrl, logout_token);
 
   return c.json({
     status: "success",
     nid: nid,
-    data: data,
   });
 });
 
