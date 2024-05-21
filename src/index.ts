@@ -185,6 +185,14 @@ app.get("/hello/:name", (c) => {
   `);
 });
 
+app.post("/api/testhook", (c) => {
+  const body = c.req.json();
+  console.log(body);
+  return {
+    status: "success",
+  };
+});
+
 app.post("/api/find-similar", async (c) => {
   setMetric(c, "region", "us-east-1");
   startTime(c, "similar");
