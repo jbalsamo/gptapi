@@ -187,7 +187,7 @@ app.get("/hello/:name", (c) => {
 
 app.post("/api/testhook", (c) => {
   const body = c.req.json();
-  console.log(body);
+  //console.log(body);
   return {
     status: "success",
   };
@@ -226,7 +226,7 @@ app.post("/api/find-similar", async (c) => {
     `,
   };
 
-  console.log(similar2Post);
+  //console.log(similar2Post);
 
   const data = await postSimilar2Drupal(
     drupalUrl,
@@ -235,8 +235,7 @@ app.post("/api/find-similar", async (c) => {
     similar2Post
   );
 
-  console.log(data);
-  // let data = { message: "Similar" };
+  //console.log(data);
   const user = await logoutDrupal(drupalUrl, logout_token);
 
   return c.json({
@@ -252,7 +251,7 @@ app.post("/api/get-answers", async (c) => {
   startTime(c, "gpt");
   let data = await answerQuestions(body.node, body.session_id, body.question);
   endTime(c, "gpt");
-  console.log(data);
+  //console.log(data);
   return c.json({
     node: body.node,
     session_id: body.session_id,

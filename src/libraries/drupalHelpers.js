@@ -95,10 +95,10 @@ export const post2Drupal = async (u, csrf, result) => {
       i !== result.citations.length - 1 ? (sources += ", ") : (sources += "");
     });
     sources += "]";
-    console.log(
-      "🚀 ~ file: drupalHelpers.js:90 ~ post2Drupal ~ sources:",
-      JSON.parse(sources)
-    );
+    //console.log(
+    //  "🚀 ~ file: drupalHelpers.js:90 ~ post2Drupal ~ sources:",
+    //  JSON.parse(sources)
+    //);
   } else {
     sources = "[]";
   }
@@ -189,11 +189,6 @@ export const postSimilar2Drupal = async (u, csrf, nid, result) => {
     headers: headersList,
     body: body,
   });
-
-  console.log(response);
-
-  //let data = (await response.json()) || { "message": "SUCCESS" };
-  //console.log("🚀 ~ file: drupalHelpers.js:90 ~ post2Drupal ~ data:", data);
 
   return await {
     "status": "success",
