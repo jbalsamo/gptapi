@@ -4,6 +4,7 @@
 import { serve } from "@hono/node-server";
 import { config } from "dotenv";
 import { Hono } from "hono";
+import { logger } from "hono/logger";
 import { endTime, setMetric, startTime, timing } from "hono/timing";
 import {
   submitQuestionDocuments,
@@ -48,11 +49,12 @@ const pword = process.env.DRUPAL_PASSWORD;
 const app = new Hono();
 
 app.use(timing());
+app.use(logger());
 
 // Functions
 const findSimilarAnswers = async (node: any, question: string) => {
   const systemPrompt = `
-  You are an AI assistant that helps people extract the top 2 relevant question and answer pairs that are similar to the question I enter.
+  You are an AI assistant that helps people extract the top relevant question and answer that is similar to the question I enter.
 
   ### Output Format:
   Return a JSON  with an array with the 3 top items, each containing the fields nid, category, question, answer.
@@ -64,17 +66,12 @@ const findSimilarAnswers = async (node: any, question: string) => {
        category: category_1,
        question: question_1,
        answer: answer_1
-    },
-    {
-       nid: nid_2,
-       category: category_2,
-       question: question_2,
-       answer: answer_2
     }
   ]
   `;
+
   const userPrompt = `
-    Find 3 most relevant questions and answers similar to: '${question}'\nReturn it as a JSON Array with 3 json objects containing the 'question' and 'answer'. Do not use any markdown and just return the string. Only return questions and answers that are between the '---' and where there are 'question:' and 'answer:' pairs, with the appropriate attribute name.
+    Find the most relevant question and answer similar to: '${question}'\nReturn it as a JSON Array with 1 json objects containing the 'question' and 'answer'. Do not use any markdown and just return the string. Only return questions and answers that are between the '---' and where there are 'question:' and 'answer:' pairs, with the appropriate attribute name.
   `;
 
   let similarAnswers = await submitQuestionDocuments(
@@ -202,7 +199,7 @@ app.post("/api/find-similar", async (c) => {
 
   const similarAnswers = await findSimilarAnswers(nid, question);
   endTime(c, "similar");
-  // console.log(similarAnswers[0].question);
+  // console.log(similarAnswers[0]);
 
   const { Cookie, csrf_token, logout_token } = await loginDrupal(
     drupalUrl,
@@ -216,17 +213,9 @@ app.post("/api/find-similar", async (c) => {
       ${similarAnswers[0].question}\n
       ${similarAnswers[0].answer}
     `,
-    "field_similar_question_2": `
-      ${similarAnswers[1].question}\n
-      ${similarAnswers[1].answer}
-    `,
-    "field_similar_question_3": `
-      ${similarAnswers[2].question}\n
-      ${similarAnswers[2].answer}
-    `,
   };
 
-  //console.log(similar2Post);
+  // console.log(similar2Post);
 
   const data = await postSimilar2Drupal(
     drupalUrl,

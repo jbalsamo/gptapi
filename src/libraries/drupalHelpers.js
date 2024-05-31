@@ -167,16 +167,6 @@ export const postSimilar2Drupal = async (u, csrf, nid, result) => {
         "value": result.field_similar_question_1,
       },
     ],
-    "field_similar_question_2": [
-      {
-        "value": result.field_similar_question_2,
-      },
-    ],
-    "field_similar_question_3": [
-      {
-        "value": result.field_similar_question_3,
-      },
-    ],
     "type": [
       {
         "target_id": "question_page",
