@@ -59,6 +59,14 @@ const findSimilarAnswers = async (node: any, question: string) => {
   ### Output Format:
   Return a JSON  with an array with the 3 top items, each containing the fields nid, category, question, answer.
 
+  If no closely related questions or answers are found, return the following JSON array:
+  [
+    {
+      question: "No closely related questions or answers found:",
+      answer: "Please check back later for your submission to be answered on our Health Answers page."
+    }
+  ]
+
   ### Example Output
   [
     {
@@ -72,6 +80,13 @@ const findSimilarAnswers = async (node: any, question: string) => {
 
   const userPrompt = `
     Find the most relevant question and answer similar to: '${question}'\nReturn it as a JSON Array with 1 json objects containing the 'question' and 'answer'. Do not use any markdown and just return the string. Only return questions and answers that are between the '---' and where there are 'question:' and 'answer:' pairs, with the appropriate attribute name.
+    If no closely related questions or answers are found, return the following JSON array:
+    [
+      {
+        question: "No closely related questions or answers found:",
+        answer: "Please check back later for your submission to be answered on our Health Answers page."
+      }
+    ]
   `;
 
   let similarAnswers = await submitQuestionDocuments(
@@ -83,6 +98,8 @@ const findSimilarAnswers = async (node: any, question: string) => {
     azSearchKey,
     azAnswersIndexName
   );
+
+  //console.log(similarAnswers);
 
   const parsedSimilarAnswers = JSON.parse(similarAnswers.answer);
   return parsedSimilarAnswers;
