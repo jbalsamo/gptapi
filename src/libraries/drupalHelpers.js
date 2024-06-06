@@ -152,6 +152,7 @@ export const post2Drupal = async (u, csrf, result) => {
 };
 
 export const postSimilar2Drupal = async (u, csrf, nid, result) => {
+  let body;
   let url = u + `node/${nid}?_format=json`;
 
   let headersList = {
@@ -161,18 +162,39 @@ export const postSimilar2Drupal = async (u, csrf, nid, result) => {
     "Content-Type": "application/json",
   };
 
-  let body = JSON.stringify({
-    "field_similar_question_1": [
-      {
-        "value": result.field_similar_question_1,
-      },
-    ],
-    "type": [
-      {
-        "target_id": "question_page",
-      },
-    ],
-  });
+  if (
+    !result.field_similar_question_1.includes(
+      "No closely related questions or answers found"
+    )
+  ) {
+    body = JSON.stringify({
+      "field_similar_question_1": [
+        {
+          "value": result.field_similar_question_1,
+        },
+      ],
+      "type": [
+        {
+          "target_id": "question_page",
+        },
+      ],
+    });
+  } else {
+    body = JSON.stringify({
+      "field_no_similar_questions": [
+        {
+          "value": result.field_similar_question_1,
+        },
+      ],
+      "type": [
+        {
+          "target_id": "question_page",
+        },
+      ],
+    });
+  }
+
+  console.log(body);
 
   let response = await fetch(url, {
     method: "PATCH",

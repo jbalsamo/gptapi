@@ -62,8 +62,8 @@ const findSimilarAnswers = async (node: any, question: string) => {
   If no closely related questions or answers are found, return the following JSON array:
   [
     {
-      question: "No closely related questions or answers found:",
-      answer: "Please check back later for your submission to be answered on our Health Answers page."
+      question: "Sorry, we didn’t find any similar questions:",
+      answer: "Please check back later for your question to be answered on our Health Answers page."
     }
   ]
 
@@ -99,7 +99,7 @@ const findSimilarAnswers = async (node: any, question: string) => {
     azAnswersIndexName
   );
 
-  //console.log(similarAnswers);
+  console.log(similarAnswers);
 
   const parsedSimilarAnswers = JSON.parse(similarAnswers.answer);
   return parsedSimilarAnswers;
