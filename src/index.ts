@@ -79,7 +79,7 @@ const findSimilarAnswers = async (node: any, question: string) => {
   `;
 
   const userPrompt = `
-    Find the most relevant question and answer similar to: '${question}'\nReturn it as a JSON Array with 1 json objects containing the 'question' and 'answer'. Do not use any markdown and just return the string. Only return questions and answers that are between the '---' and where there are 'question:' and 'answer:' pairs, with the appropriate attribute name.
+    Find the top 3 most relevant questions and answers similar to: '${question}'\nReturn it as a JSON Array with 3 json objects containing the 'question' and 'answer'. Do not use any markdown and just return the string. Only return questions and answers that are between the '---' and where there are 'question:' and 'answer:' pairs, with the appropriate attribute name.
     If no closely related questions or answers are found, return the following JSON array:
     [
       {
@@ -87,6 +87,8 @@ const findSimilarAnswers = async (node: any, question: string) => {
         answer: "Please check back later for your submission to be answered on our Health Answers page."
       }
     ]
+
+    All results must agree in subject and context.
   `;
 
   let similarAnswers = await submitQuestionDocuments(
@@ -99,7 +101,7 @@ const findSimilarAnswers = async (node: any, question: string) => {
     azAnswersIndexName
   );
 
-  console.log(similarAnswers);
+  //console.log("similarAnswers:", similarAnswers.answer);
 
   const parsedSimilarAnswers = JSON.parse(similarAnswers.answer);
   return parsedSimilarAnswers;
@@ -199,13 +201,13 @@ app.get("/hello/:name", (c) => {
   `);
 });
 
-app.post("/api/testhook", (c) => {
-  const body = c.req.json();
-  //console.log(body);
-  return {
-    status: "success",
-  };
-});
+// app.post("/api/testhook", (c) => {
+//   const body = c.req.json();
+//   //console.log(body);
+//   return {
+//     status: "success",
+//   };
+// });
 
 app.post("/api/find-similar", async (c) => {
   setMetric(c, "region", "us-east-1");
@@ -216,23 +218,46 @@ app.post("/api/find-similar", async (c) => {
 
   const similarAnswers = await findSimilarAnswers(nid, question);
   endTime(c, "similar");
-  // console.log(similarAnswers[0]);
+  //console.log("Returns: ", similarAnswers[0].question);
 
   const { Cookie, csrf_token, logout_token } = await loginDrupal(
     drupalUrl,
     uname,
     pword
   );
+  let similar2Post;
 
-  const similar2Post = {
-    "Cookie": Cookie,
-    "field_similar_question_1": `
-      ${similarAnswers[0].question}\n
-      ${similarAnswers[0].answer}
-    `,
-  };
+  if (
+    !similarAnswers[0].question.includes(
+      "No closely related questions or answers found"
+    )
+  ) {
+    similar2Post = {
+      "Cookie": Cookie,
+      "field_similar_question_1": `
+          ${similarAnswers[0].question}\n
+          ${similarAnswers[0].answer}
+        `,
+      "field_similar_question_2": `
+          ${similarAnswers[1].question}\n
+          ${similarAnswers[1].answer}
+        `,
+      "field_similar_question_3": `
+          ${similarAnswers[2].question}\n
+          ${similarAnswers[2].answer}
+        `,
+    };
+  } else {
+    similar2Post = {
+      "Cookie": Cookie,
+      "field_no_similar_questions": `
+          ${similarAnswers[0].question}\n
+          ${similarAnswers[0].answer}
+        `,
+    };
+  }
 
-  // console.log(similar2Post);
+  console.log("Post sent to Drupal: ", similar2Post);
 
   const data = await postSimilar2Drupal(
     drupalUrl,

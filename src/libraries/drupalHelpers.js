@@ -162,15 +162,21 @@ export const postSimilar2Drupal = async (u, csrf, nid, result) => {
     "Content-Type": "application/json",
   };
 
-  if (
-    !result.field_similar_question_1.includes(
-      "No closely related questions or answers found"
-    )
-  ) {
+  if (!result.field_no_similar_questions && result.field_similar_question_1) {
     body = JSON.stringify({
       "field_similar_question_1": [
         {
           "value": result.field_similar_question_1,
+        },
+      ],
+      "field_similar_question_2": [
+        {
+          "value": result.field_similar_question_2,
+        },
+      ],
+      "field_similar_question_3": [
+        {
+          "value": result.field_similar_question_3,
         },
       ],
       "type": [
@@ -183,7 +189,7 @@ export const postSimilar2Drupal = async (u, csrf, nid, result) => {
     body = JSON.stringify({
       "field_no_similar_questions": [
         {
-          "value": result.field_similar_question_1,
+          "value": result.field_no_similar_questions,
         },
       ],
       "type": [
@@ -194,7 +200,7 @@ export const postSimilar2Drupal = async (u, csrf, nid, result) => {
     });
   }
 
-  console.log(body);
+  // console.log(JSON.parse(body));
 
   let response = await fetch(url, {
     method: "PATCH",
