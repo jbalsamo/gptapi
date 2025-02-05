@@ -52,6 +52,31 @@ app.use(timing());
 app.use(logger());
 
 // Functions
+
+/**
+ * Searches for similar questions and answers in the knowledge base using Azure Cognitive Search.
+ * Uses AI to find and extract the most relevant QA pairs based on semantic similarity.
+ *
+ * @param node - The node context for the search (type: any)
+ * @param question - The user's question to find similar matches for
+ * @returns Promise<Array<{
+ *   nid?: string,
+ *   category?: string,
+ *   question: string,
+ *   answer: string
+ * }>> Array of similar QA pairs, or a default "not found" message if no matches
+ *
+ * @requires Environment Variables:
+ *   - azBaseUrl: Azure base URL
+ *   - azApiKey: Azure API key
+ *   - azSearchUrl: Azure Cognitive Search URL
+ *   - azSearchKey: Azure Cognitive Search key
+ *   - azAnswersIndexName: Name of the answers index
+ *
+ * @example
+ * const similarQAs = await findSimilarAnswers(nodeContext, "What are the symptoms of diabetes?");
+ * // Returns: [{nid: "123", category: "Health", question: "...", answer: "..."}]
+ */
 const findSimilarAnswers = async (node: any, question: string) => {
   const systemPrompt = `
   You are an AI assistant that helps people extract the top relevant question and answer that is similar to the question I enter.
@@ -107,6 +132,32 @@ const findSimilarAnswers = async (node: any, question: string) => {
   return parsedSimilarAnswers;
 };
 
+/**
+ * Processes and answers user questions using Azure AI services with context from relevant documents.
+ * Implements a RAG (Retrieval Augmented Generation) pattern to provide accurate, contextual responses.
+ *
+ * @param node - The node context for processing the question (type: any)
+ * @param session_id - Unique identifier for the current session
+ * @param question - The user's question to be answered
+ * @returns Promise<{
+ *   answer: string,
+ *   similar?: Array<{
+ *     question: string,
+ *     answer: string
+ *   }>,
+ *   documents?: Array<string>
+ * }> Object containing the answer and optional similar QA pairs
+ *
+ * @requires Environment Variables:
+ *   - azBaseUrl: Azure base URL for AI services
+ *   - azApiKey: Azure API key
+ *   - azSearchUrl: Azure Cognitive Search URL
+ *   - azSearchKey: Azure Cognitive Search key
+ *   - azIndexName: Name of the primary search index
+ *
+ * @throws {Error} When Azure AI services fail to process the question
+ * @throws {Error} When document retrieval fails
+ */
 const answerQuestions = async (node: any, session_id: any, question: any) => {
   // get answers from Azure AI
   let summaryPrompt, dataSummary;
