@@ -185,6 +185,139 @@ const answerQuestions = async (node: any, session_id: any, question: any) => {
   };
 };
 
+/**
+ * Queries Azure Cognitive Search using both semantic and vector search capabilities for RAG (Retrieval Augmented Generation).
+ * Supports hybrid search combining traditional keyword-based search with vector similarity search.
+ *
+ * @param query - The search query string to find relevant documents
+ * @param topK - Number of results to return (default: 3)
+ * @param useVectorSearch - Whether to enable vector search using embeddings (default: true)
+ *
+ * @returns Promise<Array<any>> Array of search results, each containing:
+ *   - id: Document identifier
+ *   - score: Combined search score (reranker or standard score)
+ *   - content: Document content
+ *   - caption: Extractive caption from the document
+ *   - highlights: Highlighted matches in content
+ *   - vectorScore: Vector similarity score when vector search is enabled
+ *
+ * @requires Environment Variables:
+ *   - AZURE_OPENAI_ENDPOINT: Azure OpenAI API endpoint
+ *   - AZURE_OPENAI_KEY: Azure OpenAI API key
+ *   - AZURE_EMBEDDING_DEPLOYMENT: Name of the embedding model deployment
+ *   - azSearchUrl: Azure Cognitive Search endpoint
+ *   - azSearchKey: Azure Cognitive Search API key
+ *   - azIndexName: Name of the search index
+ *
+ * @throws {Error} When required Azure configurations are missing
+ * @throws {Error} When embedding generation fails
+ * @throws {Error} When search request fails
+ */
+const queryRAGInstance = async (
+  query: string,
+  topK: number = 3,
+  useVectorSearch: boolean = true
+): Promise<Array<any>> => {
+  try {
+    if (!azSearchUrl || !azSearchKey || !azIndexName) {
+      throw new Error('Azure Cognitive Search configuration is missing');
+    }
+
+    const searchClient = `${azSearchUrl}/indexes/${azIndexName}/docs/search?api-version=2023-11-01`;
+
+    // Generate vector embedding for the query
+    const openaiEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+    const openaiKey = process.env.AZURE_OPENAI_KEY;
+    const embeddingDeployment = process.env.AZURE_EMBEDDING_DEPLOYMENT;
+
+    if (useVectorSearch && (!openaiEndpoint || !openaiKey || !embeddingDeployment)) {
+      throw new Error('Azure OpenAI configuration for embeddings is missing');
+    }
+
+    let vectorQuery;
+    if (useVectorSearch) {
+      // Generate embedding using Azure OpenAI
+      const embeddingResponse = await fetch(
+        `${openaiEndpoint}/openai/deployments/${embeddingDeployment}/embeddings?api-version=2023-05-15`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': openaiKey
+          },
+          body: JSON.stringify({
+            input: query
+          })
+        }
+      );
+
+      if (!embeddingResponse.ok) {
+        throw new Error('Failed to generate embedding');
+      }
+
+      const embeddingData = await embeddingResponse.json();
+      vectorQuery = embeddingData.data[0].embedding;
+    }
+
+    const searchBody: any = {
+      search: query,
+      top: topK,
+      select: "id,content,embedding",
+      queryType: "semantic",
+      semanticConfiguration: "default",
+      captions: "extractive",
+      answers: "extractive",
+      queryLanguage: "en-us",
+      speller: "lexicon"
+    };
+
+    // Add vector search if enabled
+    if (useVectorSearch && vectorQuery) {
+      searchBody.vectors = [{
+        value: vectorQuery,
+        fields: ["embedding"],
+        k: topK
+      }];
+      // Hybrid search configuration
+      searchBody.vectorFields = ["embedding"];
+      searchBody.select = "id,content,embedding,@search.score,@search.rerankerScore";
+      searchBody.rerankerConfiguration = "default";
+    }
+
+    const response = await fetch(searchClient, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': azSearchKey
+      },
+      body: JSON.stringify(searchBody)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Search request failed: ${response.statusText}`);
+    }
+
+    const searchResults = await response.json();
+
+    // Transform results to a more usable format
+    const formattedResults = searchResults.value.map((result: any) => ({
+      id: result.id,
+      score: useVectorSearch ?
+        (result['@search.rerankerScore'] || result['@search.score']) :
+        result['@search.score'],
+      content: result.content,
+      caption: result['@search.captions']?.[0]?.text || '',
+      highlights: result['@search.highlights']?.content || [],
+      vectorScore: result['@search.vectorScore']
+    }));
+
+    return formattedResults;
+  } catch (error) {
+    console.error('Error querying Azure Cognitive Search:', error);
+    throw error;
+  }
+};
+
 // Routes
 app.get("/", (c) => {
   return c.render(`

@@ -1,3 +1,5 @@
 {
-  "cSpell.words": ["gptbot"]
+  "cSpell.words": ["gptbot"],
+  "npm.packageManager": "pnpm",
+  "prettier.withNodeModules": false
 }
