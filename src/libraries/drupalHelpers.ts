@@ -1,13 +1,40 @@
 import logger from "../utils/logger.js";
 
+interface DrupalLoginResponse {
+  Cookie: string;
+  csrf_token: string;
+  current_user: {
+    uid: number;
+    roles: string[];
+    name: string;
+  };
+  logout_token: string;
+}
+
+interface DrupalQuestion {
+  nid: string;
+  title: string;
+  body: string;
+  status: string;
+  created: string;
+  changed: string;
+}
+
+interface DrupalNodeUpdateResult {
+  nid: string;
+  answerGPT: string;
+  questionStatus: string;
+  answerDocs: string;
+  answerPMA: string;
+  answerSummary: string;
+  citations: Array<{ url: string; filepath: string }>;
+  Cookie: string;
+}
+
 /**
  * Deduplicates an array of objects based on a specified key.
- *
- * @param {Array} array - The array of objects to be deduplicated.
- * @param {string} key - The key to be used for deduplication.
- * @return {Array} - The deduplicated array.
  */
-const deduplicateArray = (array, key) => {
+const deduplicateArray = <T>(array: T[], key: keyof T): T[] => {
   return array.filter(
     (item, index, self) => index === self.findIndex((t) => t[key] === item[key])
   );
@@ -15,57 +42,58 @@ const deduplicateArray = (array, key) => {
 
 /**
  * Logs in to Drupal using the provided URL.
- *
- * @param {string} u - The base URL of the Drupal instance.
- * @return {Promise<object>} - A Promise that resolves to the response data from the login request.
  */
-export const loginDrupal = async (u, uname, pword) => {
-  let logonUrl = u + "user/login?_format=json";
+export const loginDrupal = async (
+  u: string,
+  uname: string,
+  pword: string
+): Promise<DrupalLoginResponse> => {
+  const logonUrl = u + "user/login?_format=json";
 
-  let headersList = {
+  const headersList = {
     "Accept": "*/*",
     "Content-Type": "application/json",
   };
 
-  let bodyContent = JSON.stringify({
+  const bodyContent = JSON.stringify({
     "name": uname,
     "pass": pword,
   });
 
-  let response = await fetch(logonUrl, {
+  const response = await fetch(logonUrl, {
     method: "POST",
     body: bodyContent,
     headers: headersList,
   });
 
-  const cookie = await response.headers.get("Set-Cookie");
+  const cookie = response.headers.get("Set-Cookie");
   const data = await response.json();
   const ret = {
     "Cookie": cookie,
     ...data,
   };
   logger.info("Logged in to Drupal");
-  return await ret;
+  return ret;
 };
 
 /**
  * Retrieves a list of submitted questions from the specified URL.
- *
- * @param {string} u - The base URL for retrieving the questions.
- * @param {string} csrf - The CSRF token for authentication.
- * @return {Promise<Array>} A promise that resolves to an array of question objects.
  */
-export const getQuestions = async (u, csrf, cookies) => {
-  let url = u + "export_questions?_format=json";
+export const getQuestions = async (
+  u: string,
+  csrf: string,
+  cookies: string
+): Promise<Array<DrupalQuestion>> => {
+  const url = u + "export_questions?_format=json";
 
-  let headersList = {
+  const headersList = {
     Accept: "application/json",
     "Content-Type": "application/json",
     "Cookie": cookies,
     "X-CSRF-Token": csrf,
   };
 
-  let response = await fetch(url, {
+  const response = await fetch(url, {
     method: "GET",
     headers: headersList,
   });
@@ -77,22 +105,22 @@ export const getQuestions = async (u, csrf, cookies) => {
 
 /**
  * Retrieves a list of updated questions from the specified URL.
- *
- * @param {string} u - The base URL for retrieving the questions.
- * @param {string} csrf - The CSRF token for authentication.
- * @return {Promise<Array>} A promise that resolves to an array of question objects.
  */
-export const getUpdates = async (u, csrf, cookies) => {
-  let url = u + "export_updates?_format=json";
+export const getUpdates = async (
+  u: string,
+  csrf: string,
+  cookies: string
+): Promise<Array<DrupalQuestion>> => {
+  const url = u + "export_updates?_format=json";
 
-  let headersList = {
+  const headersList = {
     Accept: "application/json",
     "Content-Type": "application/json",
     "Cookie": cookies,
     "X-CSRF-Token": csrf,
   };
 
-  let response = await fetch(url, {
+  const response = await fetch(url, {
     method: "GET",
     headers: headersList,
   });
@@ -104,23 +132,22 @@ export const getUpdates = async (u, csrf, cookies) => {
 
 /**
  * Retrieves a list of pending questions from the specified URL.
- *
- * @param {string} u - The base URL for retrieving the questions.
- * @param {string} csrf - The CSRF token for authentication.
- * @param {string} cookies - The session cookies for authentication.
- * @return {Promise<Array>} A promise that resolves to an array of question objects.
  */
-export const getPendingQuestions = async (u, csrf, cookies) => {
-  let url = u + "export_review?_format=json";
+export const getPendingQuestions = async (
+  u: string,
+  csrf: string,
+  cookies: string
+): Promise<Array<DrupalQuestion>> => {
+  const url = u + "export_review?_format=json";
 
-  let headersList = {
+  const headersList = {
     Accept: "application/json",
     "Content-Type": "application/json",
     "Cookie": cookies,
     "X-CSRF-Token": csrf,
   };
 
-  let response = await fetch(url, {
+  const response = await fetch(url, {
     method: "GET",
     headers: headersList,
   });
@@ -132,19 +159,18 @@ export const getPendingQuestions = async (u, csrf, cookies) => {
 
 /**
  * Updates a Drupal node with the provided information.
- *
- * @param {string} u - The base URL of the Drupal site.
- * @param {string} csrf - The CSRF token for authentication.
- * @param {object} result - The result object containing the information to update the node.
- * @return {Promise} A promise that resolves to the response from the server.
  */
-export const post2Drupal = async (u, csrf, result) => {
-  let url = u + `node/${result.nid}?_format=json`;
+export const post2Drupal = async (
+  u: string,
+  csrf: string,
+  result: DrupalNodeUpdateResult
+): Promise<any> => {
+  const url = u + `node/${result.nid}?_format=json`;
 
   logger.info(`Updating Drupal node ${result.nid}`);
   logger.debug(`Question Status: ${result.questionStatus}`);
 
-  let headersList = {
+  const headersList = {
     "Accept": "*/*",
     "X-CSRF-Token": csrf,
     "Cookie": result.Cookie,
@@ -152,7 +178,7 @@ export const post2Drupal = async (u, csrf, result) => {
   };
 
   // Format sources properly for Drupal
-  let formattedSources = [];
+  const formattedSources = [];
   if (result.citations && result.citations.length > 0) {
     formattedSources = result.citations.map((source) => ({
       uri: source.url || "",
@@ -161,7 +187,7 @@ export const post2Drupal = async (u, csrf, result) => {
     formattedSources = deduplicateArray(formattedSources, "title");
   }
 
-  let bodyContent = {
+  const bodyContent = {
     "field_answer": [
       {
         "value": result.answerGPT,
@@ -198,7 +224,7 @@ export const post2Drupal = async (u, csrf, result) => {
   logger.debug("Request body:", JSON.stringify(bodyContent, null, 2));
 
   try {
-    let response = await fetch(url, {
+    const response = await fetch(url, {
       method: "PATCH",
       headers: headersList,
       body: JSON.stringify(bodyContent),
@@ -226,15 +252,14 @@ export const post2Drupal = async (u, csrf, result) => {
 
 /**
  * Logs out the user from Drupal.
- *
- * @param {string} u - The base URL of the Drupal site.
- * @param {string} lo_token - The logout token.
- * @return {Promise} A promise that resolves to the JSON response from the logout endpoint.
  */
-export const logoutDrupal = async (u, lo_token) => {
+export const logoutDrupal = async (
+  u: string,
+  lo_token: string
+): Promise<any> => {
   logger.info("Logging out of Drupal");
-  let url = u + "user/logout?_format=json&token=" + lo_token;
-  let response = await fetch(url);
-  let userInfo = await response.text();
+  const url = u + "user/logout?_format=json&token=" + lo_token;
+  const response = await fetch(url);
+  const userInfo = await response.text();
   return await userInfo;
 };

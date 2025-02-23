@@ -9,13 +9,13 @@ import { endTime, setMetric, startTime, timing } from "hono/timing";
 import {
   submitQuestionDocuments,
   submitQuestionGeneralGPT,
-} from "./libraries/azureHelpers.js";
+} from "./libraries/azureHelpers.ts";
 import {
   loginDrupal,
   logoutDrupal,
   post2Drupal,
   postSimilar2Drupal,
-} from "./libraries/drupalHelpers.js";
+} from "./libraries/drupalHelpers.ts";
 
 // Load environment variables
 config({ path: "/etc/gptbot/.env" });

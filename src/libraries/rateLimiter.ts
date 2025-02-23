@@ -2,14 +2,19 @@
  * A token bucket rate limiter implementation
  */
 export class RateLimiter {
-  constructor(tokensPerInterval, intervalInMs) {
+  private tokensPerInterval: number;
+  private intervalInMs: number;
+  private tokens: number;
+  private lastRefill: number;
+
+  constructor(tokensPerInterval: number, intervalInMs: number) {
     this.tokensPerInterval = tokensPerInterval;
     this.intervalInMs = intervalInMs;
     this.tokens = tokensPerInterval;
     this.lastRefill = Date.now();
   }
 
-  async waitForToken() {
+  async waitForToken(): Promise<boolean> {
     this.refillTokens();
 
     if (this.tokens < 1) {
@@ -22,7 +27,7 @@ export class RateLimiter {
     return true;
   }
 
-  refillTokens() {
+  private refillTokens(): void {
     const now = Date.now();
     const timePassed = now - this.lastRefill;
     const tokensToAdd =
