@@ -1,3 +1,5 @@
+import logger from "../utils/logger.js";
+
 /**
  * Deduplicates an array of objects based on a specified key.
  *
@@ -42,22 +44,24 @@ export const loginDrupal = async (u, uname, pword) => {
     "Cookie": cookie,
     ...data,
   };
+  logger.info("Logged in to Drupal");
   return await ret;
 };
 
 /**
- * Retrieves a list of questions from the specified URL.
+ * Retrieves a list of submitted questions from the specified URL.
  *
  * @param {string} u - The base URL for retrieving the questions.
  * @param {string} csrf - The CSRF token for authentication.
  * @return {Promise<Array>} A promise that resolves to an array of question objects.
  */
-export const getQuestions = async (u, csrf) => {
+export const getQuestions = async (u, csrf, cookies) => {
   let url = u + "export_questions?_format=json";
 
   let headersList = {
-    Accept: "*/*",
+    Accept: "application/json",
     "Content-Type": "application/json",
+    "Cookie": cookies,
     "X-CSRF-Token": csrf,
   };
 
@@ -67,7 +71,63 @@ export const getQuestions = async (u, csrf) => {
   });
 
   const questions = await response.json();
+  logger.info("Retrieved questions from Drupal");
   return questions;
+};
+
+/**
+ * Retrieves a list of updated questions from the specified URL.
+ *
+ * @param {string} u - The base URL for retrieving the questions.
+ * @param {string} csrf - The CSRF token for authentication.
+ * @return {Promise<Array>} A promise that resolves to an array of question objects.
+ */
+export const getUpdates = async (u, csrf, cookies) => {
+  let url = u + "export_updates?_format=json";
+
+  let headersList = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    "Cookie": cookies,
+    "X-CSRF-Token": csrf,
+  };
+
+  let response = await fetch(url, {
+    method: "GET",
+    headers: headersList,
+  });
+
+  const questions = await response.json();
+  logger.info("Retrieved updates from Drupal");
+  return questions;
+};
+
+/**
+ * Retrieves a list of pending questions from the specified URL.
+ *
+ * @param {string} u - The base URL for retrieving the questions.
+ * @param {string} csrf - The CSRF token for authentication.
+ * @param {string} cookies - The session cookies for authentication.
+ * @return {Promise<Array>} A promise that resolves to an array of question objects.
+ */
+export const getPendingQuestions = async (u, csrf, cookies) => {
+  let url = u + "export_review?_format=json";
+
+  let headersList = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    "Cookie": cookies,
+    "X-CSRF-Token": csrf,
+  };
+
+  let response = await fetch(url, {
+    method: "GET",
+    headers: headersList,
+  });
+
+  const questions = await response.json();
+  logger.info("Retrieved pending questions from Drupal");
+  return Array.isArray(questions) ? questions : [];
 };
 
 /**
@@ -81,34 +141,35 @@ export const getQuestions = async (u, csrf) => {
 export const post2Drupal = async (u, csrf, result) => {
   let url = u + `node/${result.nid}?_format=json`;
 
+  logger.info(`Updating Drupal node ${result.nid}`);
+  logger.debug(`Question Status: ${result.questionStatus}`);
+
   let headersList = {
     "Accept": "*/*",
     "X-CSRF-Token": csrf,
     "Cookie": result.Cookie,
     "Content-Type": "application/json",
   };
-  let sources = "[";
-  if (typeof result.citations !== "undefined" && result.citations.length > 0) {
-    result.citations.forEach((source, i) => {
-      // console.log(source.title, "\n", source.url);
-      sources += `{ "uri": "${source.url}" , "title": "${source.filepath}" }`;
-      i !== result.citations.length - 1 ? (sources += ", ") : (sources += "");
-    });
-    sources += "]";
-    //console.log(
-    //  "🚀 ~ file: drupalHelpers.js:90 ~ post2Drupal ~ sources:",
-    //  JSON.parse(sources)
-    //);
-  } else {
-    sources = "[]";
+
+  // Format sources properly for Drupal
+  let formattedSources = [];
+  if (result.citations && result.citations.length > 0) {
+    formattedSources = result.citations.map((source) => ({
+      uri: source.url || "",
+      title: source.filepath || "",
+    }));
+    formattedSources = deduplicateArray(formattedSources, "title");
   }
 
-  let dedupSources = deduplicateArray(JSON.parse(sources), "title");
-
-  let body = JSON.stringify({
+  let bodyContent = {
     "field_answer": [
       {
         "value": result.answerGPT,
+      },
+    ],
+    "field_state": [
+      {
+        "value": result.questionStatus,
       },
     ],
     "field_answer_from_documents": [
@@ -126,91 +187,41 @@ export const post2Drupal = async (u, csrf, result) => {
         "value": result.answerSummary,
       },
     ],
-    "field_sources": dedupSources,
-    "field_state": [
-      {
-        "value": "Under Review",
-      },
-    ],
+    "field_sources": formattedSources,
     "type": [
       {
         "target_id": "question_page",
       },
     ],
-  });
-
-  let response = await fetch(url, {
-    method: "PATCH",
-    headers: headersList,
-    body: body,
-  });
-
-  let data = await response.json();
-  // console.log(data);
-
-  return await data;
-};
-
-export const postSimilar2Drupal = async (u, csrf, nid, result) => {
-  let body;
-  let url = u + `node/${nid}?_format=json`;
-
-  let headersList = {
-    "Accept": "*/*",
-    "X-CSRF-Token": csrf,
-    "Cookie": result.Cookie,
-    "Content-Type": "application/json",
   };
 
-  if (!result.field_no_similar_questions && result.field_similar_question_1) {
-    body = JSON.stringify({
-      "field_similar_question_1": [
-        {
-          "value": result.field_similar_question_1,
-        },
-      ],
-      "field_similar_question_2": [
-        {
-          "value": result.field_similar_question_2,
-        },
-      ],
-      "field_similar_question_3": [
-        {
-          "value": result.field_similar_question_3,
-        },
-      ],
-      "type": [
-        {
-          "target_id": "question_page",
-        },
-      ],
+  logger.debug("Request body:", JSON.stringify(bodyContent, null, 2));
+
+  try {
+    let response = await fetch(url, {
+      method: "PATCH",
+      headers: headersList,
+      body: JSON.stringify(bodyContent),
     });
-  } else {
-    body = JSON.stringify({
-      "field_no_similar_questions": [
-        {
-          "value": result.field_no_similar_questions,
-        },
-      ],
-      "type": [
-        {
-          "target_id": "question_page",
-        },
-      ],
-    });
+
+    if (!response.ok) {
+      logger.error("Error response from Drupal:");
+      logger.error("Status:", response.status);
+      logger.error("Status Text:", response.statusText);
+      const errorBody = await response.text();
+      logger.error("Error Body:", errorBody);
+      throw new Error(
+        `Drupal update failed: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+    logger.info("Drupal response:", JSON.stringify(data, null, 2));
+    return data;
+  } catch (error) {
+    logger.error("Failed to update Drupal:", error);
+    throw error;
   }
-
-  // console.log(JSON.parse(body));
-
-  let response = await fetch(url, {
-    method: "PATCH",
-    headers: headersList,
-    body: body,
-  });
-
-  return await {
-    "status": "success",
-  };
 };
 
 /**
@@ -221,8 +232,9 @@ export const postSimilar2Drupal = async (u, csrf, nid, result) => {
  * @return {Promise} A promise that resolves to the JSON response from the logout endpoint.
  */
 export const logoutDrupal = async (u, lo_token) => {
-  let url = u + "logout?_format=json&token=" + lo_token;
+  logger.info("Logging out of Drupal");
+  let url = u + "user/logout?_format=json&token=" + lo_token;
   let response = await fetch(url);
-  let userInfo = await response.json();
+  let userInfo = await response.text();
   return await userInfo;
 };
