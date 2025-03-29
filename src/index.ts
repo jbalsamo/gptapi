@@ -200,8 +200,41 @@ const findSimilarAnswers = async (
   const azureResponse = ensureAzureResponse(response);
 
   try {
-    // Parse the answer string into an array of SimilarAnswer
-    const parsedAnswers = JSON.parse(azureResponse.answer);
+    // Check if the answer looks like an error message
+    if (
+      typeof azureResponse.answer === "string" &&
+      (azureResponse.answer.includes("Cannot read properties") ||
+        azureResponse.answer.startsWith("Error:") ||
+        azureResponse.answer.includes("error"))
+    ) {
+      appLogger.warn(
+        "Azure response contains an error message:",
+        azureResponse.answer
+      );
+      return [
+        {
+          question: "No closely related questions or answers found",
+          answer: "Please try rephrasing your question or ask something else.",
+        },
+      ];
+    }
+
+    // Try to parse the answer string into an array of SimilarAnswer
+    let parsedAnswers;
+    try {
+      parsedAnswers = JSON.parse(azureResponse.answer);
+    } catch (parseError) {
+      appLogger.error(
+        "Failed to parse Azure response as JSON:",
+        azureResponse.answer
+      );
+      return [
+        {
+          question: "No closely related questions or answers found",
+          answer: "Please try rephrasing your question or ask something else.",
+        },
+      ];
+    }
 
     // Validate the parsed data is an array
     if (!Array.isArray(parsedAnswers)) {
