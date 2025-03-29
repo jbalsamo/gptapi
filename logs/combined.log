@@ -1,0 +1,263 @@
+2025-03-28 23:12:11 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:12:36 [[33mwarn[39m]: Invalid request body:
+2025-03-28 23:12:36 [[32minfo[39m]: POST http://localhost:3000/api/find-similar - 11ms
+2025-03-28 23:13:21 [[32minfo[39m]: Processing question for nid 123: What are the symptoms of diabetes?
+2025-03-28 23:13:21 [[33mwarn[39m]: Azure response contains an error message:
+2025-03-28 23:13:22 [[32minfo[39m]: Logged in to Drupal
+2025-03-28 23:13:22 [[31merror[39m]: Error in postSimilar2Drupal: Failed to update similar answers: 404
+2025-03-28 23:13:22 [[31merror[39m]: Error posting to Drupal: Failed to update similar answers: 404
+2025-03-28 23:13:22 [[32minfo[39m]: POST http://localhost:3000/api/find-similar - 1399ms
+2025-03-28 23:13:41 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:14:34 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:15:18 [[32minfo[39m]: Processing test question: What are the symptoms of diabetes?
+2025-03-28 23:15:19 [[33mwarn[39m]: Azure response contains an error message:
+2025-03-28 23:15:19 [[32minfo[39m]: POST http://localhost:3000/api/test-similar - 927ms
+2025-03-28 23:20:03 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:21:09 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:21:50 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:22:06 [[32minfo[39m]: Processing test question: What are the symptoms of diabetes?
+2025-03-28 23:22:06 [[33mwarn[39m]: Azure response contains an error message:
+2025-03-28 23:22:06 [[32minfo[39m]: POST http://localhost:3000/api/test-similar - 349ms
+2025-03-28 23:22:29 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:23:07 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:23:22 [[32minfo[39m]: Processing test question: What are the symptoms of diabetes?
+2025-03-28 23:23:22 [[32minfo[39m]: Finding similar answers for question: "What are the symptoms of diabetes?"
+2025-03-28 23:23:22 [[33mwarn[39m]: Azure response contains an error message:
+2025-03-28 23:23:22 [[32minfo[39m]: POST http://localhost:3000/api/test-similar - 305ms
+2025-03-28 23:25:44 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:26:17 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:26:29 [[32minfo[39m]: Processing test question: What are the symptoms of diabetes?
+2025-03-28 23:26:29 [[32minfo[39m]: Finding similar answers for question: "What are the symptoms of diabetes?"
+2025-03-28 23:26:29 [[33mwarn[39m]: Azure response contains an error message:
+2025-03-28 23:26:29 [[32minfo[39m]: POST http://localhost:3000/api/test-similar - 330ms
+2025-03-28 23:26:42 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:27:11 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:27:35 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:27:47 [[32minfo[39m]: Processing test question: What are the symptoms of diabetes?
+2025-03-28 23:27:47 [[32minfo[39m]: Finding similar answers for question: "What are the symptoms of diabetes?"
+2025-03-28 23:27:47 [[33mwarn[39m]: Azure response contains an error message:
+2025-03-28 23:27:47 [[32minfo[39m]: POST http://localhost:3000/api/test-similar - 367ms
+2025-03-28 23:32:13 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:32:59 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:33:16 [[32minfo[39m]: Processing test question: What are the symptoms of diabetes?
+2025-03-28 23:33:16 [[32minfo[39m]: Finding similar answers for question: "What are the symptoms of diabetes?"
+2025-03-28 23:33:17 [[33mwarn[39m]: Azure response contains an error message:
+2025-03-28 23:33:17 [[32minfo[39m]: POST http://localhost:3000/api/test-similar - 337ms
+2025-03-28 23:33:44 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:35:31 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:35:50 [[32minfo[39m]: Processing test question: What are the symptoms of diabetes?
+2025-03-28 23:35:50 [[32minfo[39m]: Finding similar answers for question: "What are the symptoms of diabetes?"
+2025-03-28 23:35:50 [[33mwarn[39m]: Azure response contains an error message:
+2025-03-28 23:35:50 [[32minfo[39m]: POST http://localhost:3000/api/test-similar - 284ms
+2025-03-28 23:36:06 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:37:11 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:37:22 [[32minfo[39m]: Processing test question: What are the symptoms of diabetes?
+2025-03-28 23:37:22 [[32minfo[39m]: Finding similar answers for question: "What are the symptoms of diabetes?"
+2025-03-28 23:37:22 [[33mwarn[39m]: Azure response contains an error message:
+2025-03-28 23:37:22 [[32minfo[39m]: POST http://localhost:3000/api/test-similar - 339ms
+2025-03-28 23:37:35 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:47:21 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:47:31 [[32minfo[39m]: Processing test question: What are the symptoms of diabetes?
+2025-03-28 23:47:31 [[32minfo[39m]: Finding similar answers for question: "What are the symptoms of diabetes?"
+2025-03-28 23:47:31 [[33mwarn[39m]: Azure response contains an error message:
+2025-03-28 23:47:31 [[32minfo[39m]: POST http://localhost:3000/api/test-similar - 327ms
+2025-03-28 23:48:09 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:49:16 [[32minfo[39m]: Testing OpenAI API with question: What is Azure OpenAI?
+2025-03-28 23:49:16 [[32minfo[39m]: POST http://localhost:3000/api/test-openai - 305ms
+2025-03-28 23:49:32 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:52:28 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:53:04 [[32minfo[39m]: Testing OpenAI API with question: What is Azure OpenAI?
+2025-03-28 23:53:08 [[32minfo[39m]: POST http://localhost:3000/api/test-openai - 4227ms
+2025-03-28 23:54:35 [[32minfo[39m]: Processing test question: What are the symptoms of diabetes?
+2025-03-28 23:54:35 [[32minfo[39m]: Finding similar answers for question: "What are the symptoms of diabetes?"
+2025-03-28 23:54:35 [[33mwarn[39m]: Azure response contains an error message:
+2025-03-28 23:54:35 [[32minfo[39m]: POST http://localhost:3000/api/test-similar - 250ms
+2025-03-28 23:55:00 [[32minfo[39m]: Processing test question: What are the symptoms of diabetes?
+2025-03-28 23:55:00 [[32minfo[39m]: Finding similar answers for question: "What are the symptoms of diabetes?"
+2025-03-28 23:55:00 [[33mwarn[39m]: Azure response contains an error message:
+2025-03-28 23:55:00 [[32minfo[39m]: POST http://localhost:3000/api/test-similar - 206ms
+2025-03-28 23:55:49 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:56:05 [[32minfo[39m]: Processing test question: What are the symptoms of diabetes?
+2025-03-28 23:56:05 [[32minfo[39m]: Finding similar answers for question: "What are the symptoms of diabetes?"
+2025-03-28 23:56:05 [[33mwarn[39m]: Azure response contains an error message:
+2025-03-28 23:56:05 [[32minfo[39m]: POST http://localhost:3000/api/test-similar - 334ms
+2025-03-28 23:56:28 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:57:13 [[32minfo[39m]: Processing test question: What are the symptoms of diabetes?
+2025-03-28 23:57:13 [[32minfo[39m]: Finding similar answers for question: "What are the symptoms of diabetes?"
+2025-03-28 23:57:22 [[31merror[39m]: Failed to parse Azure response as JSON:
+2025-03-28 23:57:22 [[32minfo[39m]: POST http://localhost:3000/api/test-similar - 8923ms
+2025-03-28 23:59:01 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-28 23:59:32 [[32minfo[39m]: Processing test question: What are the symptoms of diabetes?
+2025-03-28 23:59:32 [[32minfo[39m]: Finding similar answers for question: "What are the symptoms of diabetes?"
+2025-03-28 23:59:41 [[32minfo[39m]: POST http://localhost:3000/api/test-similar - 9024ms
+2025-03-29 00:00:40 [[32minfo[39m]: Testing OpenAI API with question: What is Azure OpenAI?
+2025-03-29 00:00:44 [[32minfo[39m]: POST http://localhost:3000/api/test-openai - 3775ms
+2025-03-29 00:02:10 [[32minfo[39m]: Processing question for nid test123: What are the symptoms of diabetes?
+2025-03-29 00:02:10 [[32minfo[39m]: Finding similar answers for question: "What are the symptoms of diabetes?"
+2025-03-29 00:02:21 [[31merror[39m]: Failed to parse Azure response as JSON:
+2025-03-29 00:02:21 [[32minfo[39m]: Logged in to Drupal
+2025-03-29 00:02:21 [[31merror[39m]: Error in postSimilar2Drupal: Failed to update similar answers: 404
+2025-03-29 00:02:21 [[31merror[39m]: Error posting to Drupal: Failed to update similar answers: 404
+2025-03-29 00:02:21 [[32minfo[39m]: POST http://localhost:3000/api/find-similar - 10992ms

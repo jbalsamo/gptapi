@@ -185,15 +185,24 @@ const findSimilarAnswers = async (
     question
   );
 
+  // Log what we're doing
+  appLogger.info(`Finding similar answers for question: "${question}"`);
+
+  // Send only the actual question to Azure search, not the prompt template
   const response = await submitQuestionDocuments(
-    userPrompt,
+    question, // Use the raw question for search
     systemPrompt,
     azBaseUrl,
     azApiKey,
     azSearchEndpoint,
     azSearchKey,
     azAnswersIndexName,
-    azDeploymentName
+    azDeploymentName,
+    "keyword", // Use keyword search instead of semantic search
+    {
+      top: 10 // Get top 10 results for better coverage
+      // Don't specify select fields to let Azure return whatever fields are available
+    }
   );
 
   // Ensure we have a valid response
@@ -529,6 +538,85 @@ app.get("/hello/:name", (c) => {
 //     status: "success",
 //   };
 // });
+
+// Test endpoint for finding similar answers without Drupal integration
+app.post("/api/test-similar", async (c) => {
+  try {
+    const body = await c.req.json();
+
+    if (!body.question) {
+      appLogger.warn("Invalid request body for test endpoint:", body);
+      return c.json(
+        {
+          status: "error",
+          message: "Missing required field: question",
+        },
+        400
+      );
+    }
+
+    const question = body.question;
+    const nid = body.nid || "test123";
+
+    appLogger.info(`Processing test question: ${question}`);
+
+    const similarAnswers = await findSimilarAnswers(
+      {
+        nid,
+        field_enter_question: [{ value: question }],
+      },
+      question
+    );
+
+    return c.json({
+      status: "success",
+      similarAnswers,
+    });
+  } catch (error) {
+    appLogger.error("Error in test endpoint:", error);
+    return c.json(
+      {
+        status: "error",
+        message: "Failed to find similar answers",
+        error: error instanceof Error ? error.message : String(error),
+      },
+      500
+    );
+  }
+});
+
+// Test endpoint for directly calling OpenAI API
+app.post("/api/test-openai", async (c) => {
+  try {
+    const body = await c.req.json();
+    const question = body.question || "What is Azure OpenAI?";
+    const systemPrompt = "You are a helpful assistant.";
+
+    appLogger.info(`Testing OpenAI API with question: ${question}`);
+
+    const response = await submitQuestionGeneralGPT(
+      question,
+      systemPrompt,
+      azBaseUrl,
+      azApiKey,
+      "bmi-centsbot-pilot" // Use the original model
+    );
+
+    return c.json({
+      status: "success",
+      response,
+    });
+  } catch (error) {
+    console.error("Error in test-openai endpoint:", error);
+    return c.json(
+      {
+        status: "error",
+        message: "An error occurred while processing your request",
+      },
+      500
+    );
+  }
+});
 
 app.post("/api/find-similar", async (c) => {
   try {
