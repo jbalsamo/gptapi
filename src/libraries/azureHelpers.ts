@@ -95,7 +95,7 @@ export const submitQuestionGeneralGPT = async (
         { role: "system", content: system },
         { role: "user", content: question },
       ],
-      temperature: 0.4,  // Moderate temperature for balance between creativity and determinism
+      temperature: 0.2,  // Lower temperature for more deterministic and stricter results
       top_p: 0.95,
       frequency_penalty: 0,
       presence_penalty: 0,

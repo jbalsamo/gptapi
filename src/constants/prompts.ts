@@ -44,19 +44,33 @@ export const prompts = {
       1. Understand the core topic and intent of the question
       2. Look for questions in the content that address similar topics or concerns
       3. Return the top 3 most relevant question-answer pairs
-      4. Format the results as a JSON array
+      4. Format the results STRICTLY as a valid JSON array with no additional text or explanations
       5. Only include questions and answers that are complete and make sense in context
       6. Ensure all returned questions and answers are closely related to the original query
+      7. Be very strict about relevance - only return highly relevant matches
+      8. IMPORTANT: Process HTML content properly by escaping quotes and special characters
 
-      Example format:
+      Example format (EXACTLY like this, with double quotes and escaped content):
       [
         {
-          question: "What are the symptoms of diabetes?",
-          answer: "Common symptoms include increased thirst, frequent urination..."
+          "question": "What are the symptoms of diabetes?",
+          "answer": "Common symptoms include increased thirst, frequent urination..."
         }
       ]
 
-      If no relevant matches are found, return a default message indicating that.
+      If no relevant matches are found, return this exact JSON:
+      [
+        {
+          "question": "No closely related questions or answers found",
+          "answer": "Please try rephrasing your question or ask something else."
+        }
+      ]
+
+      IMPORTANT: 
+      1. Your entire response must be ONLY the JSON array, nothing else.
+      2. Make sure to escape all quotes and special characters in HTML content.
+      3. Verify that your response is valid JSON before returning it.
+      4. Keep answers concise and focused to avoid JSON parsing errors.
     `,
     userPrompt: `
       Please analyze the following question and find similar questions and answers from our knowledge base:

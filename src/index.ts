@@ -200,7 +200,7 @@ const findSimilarAnswers = async (
     azDeploymentName,
     "keyword", // Use keyword search instead of semantic search
     {
-      top: 10 // Get top 10 results for better coverage
+      top: 8 // Get top 8 results for a better balance between coverage and relevance
       // Don't specify select fields to let Azure return whatever fields are available
     }
   );
@@ -231,12 +231,121 @@ const findSimilarAnswers = async (
     // Try to parse the answer string into an array of SimilarAnswer
     let parsedAnswers;
     try {
-      parsedAnswers = JSON.parse(azureResponse.answer);
+      // Add more detailed logging to help debug the issue
+      appLogger.info("Attempting to parse Azure response as JSON:");
+      
+      // If the response is too long for logging, truncate it
+      if (azureResponse.answer.length > 500) {
+        appLogger.info(azureResponse.answer.substring(0, 500) + "... (truncated)");
+      } else {
+        appLogger.info(azureResponse.answer);
+      }
+      
+      // Function to sanitize and format the response for proper JSON parsing
+      const sanitizeJsonResponse = (text: string): string => {
+        // First, try to extract just the JSON array if there's extra text
+        const jsonArrayMatch = text.match(/\[\s*\{.*\}\s*\]/s);
+        if (jsonArrayMatch) {
+          text = jsonArrayMatch[0];
+        }
+        
+        // Handle common JSON formatting issues
+        try {
+          // Try parsing as is first
+          JSON.parse(text);
+          return text; // If it parses successfully, return as is
+        } catch (e) {
+          // If parsing fails, try to fix common issues
+          
+          // First, extract the question and answer pairs
+          const questionAnswerPairs: Array<{question: string, answer: string}> = [];
+          
+          try {
+            // Try to extract structured data even if JSON is malformed
+            const matches = text.match(/\{\s*"question"\s*:\s*"([^"]*?)"\s*,\s*"answer"\s*:\s*"([^]*?)"\s*\}/g);
+            
+            if (matches && matches.length > 0) {
+              // Process each match to properly escape HTML content
+              for (const match of matches) {
+                const questionMatch = match.match(/"question"\s*:\s*"([^"]*?)"/); 
+                const answerMatch = match.match(/"answer"\s*:\s*"([^]*?)"\s*\}/); 
+                
+                if (questionMatch && answerMatch) {
+                  const question = questionMatch[1];
+                  let answer = answerMatch[1];
+                  
+                  // Properly escape quotes and backslashes in the answer
+                  answer = answer.replace(/\\/g, '\\\\');
+                  answer = answer.replace(/"/g, '\\"');
+                  
+                  // Preserve HTML tags and entities
+                  answer = answer.replace(/\n/g, '\\n');
+                  
+                  questionAnswerPairs.push({
+                    question,
+                    answer
+                  });
+                }
+              }
+              
+              // If we successfully extracted pairs, create a proper JSON array
+              if (questionAnswerPairs.length > 0) {
+                return JSON.stringify(questionAnswerPairs);
+              }
+            }
+          } catch (extractError) {
+            appLogger.error("Error extracting structured data:", extractError);
+          }
+          
+          // If we couldn't extract structured data, try a different approach
+          try {
+            // Escape all quotes within HTML tags
+            text = text.replace(/(<[^>]*)(")(.*?)(")/g, (match, p1, p2, p3, p4) => {
+              return p1 + '\\"' + p3 + '\\"';
+            });
+            
+            // Preserve HTML entities
+            text = text.replace(/&nbsp;/g, ' ');
+            text = text.replace(/&amp;/g, '&');
+            text = text.replace(/&lt;/g, '<');
+            text = text.replace(/&gt;/g, '>');
+            
+            // Escape newlines and other special characters
+            text = text.replace(/\n/g, '\\n');
+            text = text.replace(/\r/g, '\\r');
+            text = text.replace(/\t/g, '\\t');
+          } catch (escapeError) {
+            appLogger.error("Error escaping HTML content:", escapeError);
+          }
+          
+          // If all else fails, create a valid fallback response
+          try {
+            JSON.parse(text);
+            return text;
+          } catch (e2) {
+            // Return a valid fallback JSON if we still can't parse it
+            return '[{"question":"No closely related questions or answers found","answer":"Please try rephrasing your question or ask something else."}]';
+          }
+        }
+      };
+      
+      // Sanitize and parse the response
+      const sanitizedResponse = sanitizeJsonResponse(azureResponse.answer);
+      appLogger.info("Sanitized response for parsing:");
+      if (sanitizedResponse.length > 500) {
+        appLogger.info(sanitizedResponse.substring(0, 500) + "... (truncated)");
+      } else {
+        appLogger.info(sanitizedResponse);
+      }
+      
+      // Parse the sanitized response
+      parsedAnswers = JSON.parse(sanitizedResponse);
     } catch (parseError) {
       appLogger.error(
         "Failed to parse Azure response as JSON:",
-        azureResponse.answer
+        parseError
       );
+      appLogger.error("Raw response content:", azureResponse.answer);
       return [
         {
           question: "No closely related questions or answers found",
@@ -657,30 +766,50 @@ app.post("/api/find-similar", async (c) => {
       );
       let similar2Post;
 
+      // Ensure we have valid similarAnswers before accessing them
       if (
+        similarAnswers && 
+        similarAnswers.length > 0 && 
         !similarAnswers[0].question.includes(
           "No closely related questions or answers found"
         )
       ) {
-        similar2Post = [
-          {
+        // Create an array with available answers, up to 3
+        similar2Post = [];
+        
+        // Always add the first answer if it exists
+        if (similarAnswers[0]) {
+          similar2Post.push({
             question: similarAnswers[0].question,
             answer: similarAnswers[0].answer,
-          },
-          {
+          });
+        }
+        
+        // Add second answer if it exists
+        if (similarAnswers[1]) {
+          similar2Post.push({
             question: similarAnswers[1].question,
             answer: similarAnswers[1].answer,
-          },
-          {
+          });
+        }
+        
+        // Add third answer if it exists
+        if (similarAnswers[2]) {
+          similar2Post.push({
             question: similarAnswers[2].question,
             answer: similarAnswers[2].answer,
-          },
-        ];
+          });
+        }
       } else {
+        // Default to a single "no results" answer
         similar2Post = [
           {
-            question: similarAnswers[0].question,
-            answer: similarAnswers[0].answer,
+            question: similarAnswers && similarAnswers.length > 0 ? 
+              similarAnswers[0].question : 
+              "No closely related questions or answers found",
+            answer: similarAnswers && similarAnswers.length > 0 ? 
+              similarAnswers[0].answer : 
+              "Please try rephrasing your question or ask something else.",
           },
         ];
       }
