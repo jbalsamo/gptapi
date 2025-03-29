@@ -54,6 +54,10 @@ interface SearchConfig {
   filter?: string;
   orderBy?: string;
   includeTotalCount?: boolean;
+  queryType?: "simple" | "full";
+  searchMode?: "any" | "all";
+  queryLanguage?: string;
+  captions?: "disabled" | "extractive";
 }
 
 interface SearchResult {
@@ -91,7 +95,7 @@ export const submitQuestionGeneralGPT = async (
         { role: "system", content: system },
         { role: "user", content: question },
       ],
-      temperature: 0.7,
+      temperature: 0.4,  // Moderate temperature for balance between creativity and determinism
       top_p: 0.95,
       frequency_penalty: 0,
       presence_penalty: 0,
@@ -159,16 +163,22 @@ export const submitQuestionDocuments = async (
     console.log(`Searching for documents related to: "${question}"`);
     console.log(`Using index: ${indexName}, search type: ${searchType}`);
 
-    // Set default search configuration with reasonable values
+    // Set default search configuration with optimal balance
     const defaultSearchConfig: Partial<SearchConfig> = {
-      top: 5, // Get top 5 results
+      top: 3, // Limit to top 3 most relevant results as requested
       // Don't specify select fields to let Azure return whatever fields are available
       includeTotalCount: true,
+      // Using simple query type for more natural language matching
+      queryType: "simple",
+      // Not specifying searchMode to use the default behavior which is more balanced
     };
 
-    // If semantic search, add semantic configuration
+    // If semantic search, add semantic configuration with balanced parameters
     if (searchType === "semantic") {
       defaultSearchConfig.semanticConfiguration = "default";
+      defaultSearchConfig.queryLanguage = "en-us";
+      // Use more flexible semantic search settings
+      // Not specifying captions to use the default behavior
     }
 
     // Merge default config with provided config
@@ -315,13 +325,16 @@ export const querySearchIndex = async ({
     if (filter) searchRequest.filter = filter;
     if (orderBy) searchRequest.orderby = orderBy;
 
-    // Add semantic configuration for semantic search
+    // Add semantic configuration for semantic search with optimal balance
     if (searchType === "semantic") {
       searchRequest.queryType = "semantic";
       searchRequest.semanticConfiguration = semanticConfiguration;
       searchRequest.queryLanguage = "en-us";
+      // Use balanced settings for captions and answers
       searchRequest.captions = "extractive";
       searchRequest.answers = "extractive";
+      // Use a balanced approach for search mode
+      // Not specifying searchMode to use the default behavior which is more balanced
     }
 
     // Add vector search configuration
@@ -336,10 +349,10 @@ export const querySearchIndex = async ({
       ];
     }
 
-    // Add keyword search configuration
+    // Add keyword search configuration with optimal balance
     if (searchType === "keyword") {
-      searchRequest.queryType = "simple";
-      searchRequest.searchMode = "all";
+      searchRequest.queryType = "simple"; // Use simple query syntax for more natural language matching
+      // Not specifying searchMode to use the default behavior which is more balanced
     }
 
     // Remove undefined/null values
