@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import { appLogger as logger } from "../utils/logger";
 
 interface DrupalLoginResponse {
   Cookie: string;
