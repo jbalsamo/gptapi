@@ -5,3 +5,4 @@ README.html
 .vscode/launch.json
 .vscode/settings.json
 logs/error.log
+logs/combined.log

@@ -178,22 +178,45 @@ const postSimilar2Drupal = async (u, csrf, result) => {
         "Cookie": result.Cookie,
         "Content-Type": "application/json",
     };
+    // Simplify the request to Drupal by updating only the field_answer field
+    // This is a simpler field that we know exists and works with post2Drupal
     const bodyContent = {
-        "field_similar_answers": result.similarAnswers.map(qa => ({
-            question: qa.question,
-            answer: qa.answer,
-        })),
+        "type": [{ "target_id": "question_page" }],
+        "field_answer": [
+            {
+                "value": JSON.stringify(result.similarAnswers),
+                "format": "full_html"
+            }
+        ]
     };
     try {
+        // Log the full request details
+        logger.debug(`Sending request to Drupal: ${u}node/${result.nid}?_format=json`);
+        logger.debug(`Headers: ${JSON.stringify(headersList)}`);
+        logger.debug(`Body: ${JSON.stringify(bodyContent)}`);
         const response = await fetch(`${u}node/${result.nid}?_format=json`, {
             method: "PATCH",
             headers: headersList,
             body: JSON.stringify(bodyContent),
         });
+        // Log the full response
+        const responseText = await response.text();
+        logger.debug(`Response status: ${response.status}`);
+        logger.debug(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
+        logger.debug(`Response body: ${responseText}`);
         if (!response.ok) {
-            throw new Error(`Failed to update similar answers: ${response.status}`);
+            throw new Error(`Failed to update similar answers: ${response.status} - ${responseText}`);
         }
-        const data = await response.json();
+        // Parse the response text as JSON if possible
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        }
+        catch (e) {
+            const error = e;
+            logger.warn(`Could not parse response as JSON: ${error.message}`);
+            data = { raw: responseText };
+        }
         return data;
     }
     catch (error) {
@@ -211,4 +234,4 @@ const logoutDrupal = async (u, lo_token) => {
     const userInfo = await response.text();
     return await userInfo;
 };
-export { loginDrupal, logoutDrupal, post2Drupal, getQuestions, getUpdates, getPendingQuestions, postSimilar2Drupal, };
+export { getPendingQuestions, getQuestions, getUpdates, loginDrupal, logoutDrupal, post2Drupal, postSimilar2Drupal, };
