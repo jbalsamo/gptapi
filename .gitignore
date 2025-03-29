@@ -4,3 +4,4 @@ README_files
 README.html
 .vscode/launch.json
 .vscode/settings.json
+logs/error.log

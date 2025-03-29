@@ -261,3 +261,30 @@
 2025-03-29 00:02:21 [[31merror[39m]: Error in postSimilar2Drupal: Failed to update similar answers: 404
 2025-03-29 00:02:21 [[31merror[39m]: Error posting to Drupal: Failed to update similar answers: 404
 2025-03-29 00:02:21 [[32minfo[39m]: POST http://localhost:3000/api/find-similar - 10992ms
+2025-03-29 00:09:12 [[32minfo[39m]: Processing question for nid 744: What are the symptoms of diabetes?
+2025-03-29 00:09:12 [[32minfo[39m]: Finding similar answers for question: "What are the symptoms of diabetes?"
+2025-03-29 00:09:21 [[32minfo[39m]: Logged in to Drupal
+2025-03-29 00:09:21 [[31merror[39m]: Error in postSimilar2Drupal: Failed to update similar answers: 422
+2025-03-29 00:09:21 [[31merror[39m]: Error posting to Drupal: Failed to update similar answers: 422
+2025-03-29 00:09:21 [[32minfo[39m]: POST http://localhost:3000/api/find-similar - 9337ms
+2025-03-29 00:09:58 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-29 00:10:55 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+
+2025-03-29 00:11:03 [[32minfo[39m]: Server initializing with configuration:
+  - Drupal URL: http://botserver.eastus2.cloudapp.azure.com/
+  - Azure Search Endpoint: https://openaibmipilot.search.windows.net/
+  - Azure Index: document-index
+  - Azure PM Index: pmvectorindx2
+  - Port: 3000
+

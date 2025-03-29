@@ -280,7 +280,7 @@ const postSimilar2Drupal = async (
   };
 
   const bodyContent = {
-    "field_similar_answers": result.similarAnswers.map(qa => ({
+    "field_similar_answers": result.similarAnswers.map((qa) => ({
       question: qa.question,
       answer: qa.answer,
     })),
@@ -308,10 +308,7 @@ const postSimilar2Drupal = async (
 /**
  * Logs out the user from Drupal.
  */
-const logoutDrupal = async (
-  u: string,
-  lo_token: string
-): Promise<any> => {
+const logoutDrupal = async (u: string, lo_token: string): Promise<any> => {
   logger.info("Logging out of Drupal");
   const url = u + "user/logout?_format=json&token=" + lo_token;
   const response = await fetch(url);
@@ -320,11 +317,11 @@ const logoutDrupal = async (
 };
 
 export {
+  getPendingQuestions,
+  getQuestions,
+  getUpdates,
   loginDrupal,
   logoutDrupal,
   post2Drupal,
-  getQuestions,
-  getUpdates,
-  getPendingQuestions,
   postSimilar2Drupal,
 };
