@@ -279,17 +279,33 @@ const postSimilar2Drupal = async (
     "Content-Type": "application/json",
   };
 
-  // Simplify the request to Drupal by updating only the field_answer field
-  // This is a simpler field that we know exists and works with post2Drupal
-  const bodyContent = {
-    "type": [{ "target_id": "question_page" }],
-    "field_answer": [
-      {
-        "value": JSON.stringify(result.similarAnswers),
-        "format": "full_html"
-      }
-    ]
+  // Map similar answers to their respective fields in Drupal
+  const bodyContent: Record<string, any> = {
+    "type": [{ "target_id": "question_page" }]
   };
+
+  // Add similar questions to their respective fields if available
+  if (result.similarAnswers && result.similarAnswers.length > 0) {
+    // Map up to 3 similar questions to their respective fields
+    const fieldNames = ['field_similar_question_1', 'field_similar_question_2', 'field_similar_question_3'];
+    
+    result.similarAnswers.slice(0, 3).forEach((similar, index) => {
+      if (index < fieldNames.length && similar.question && similar.answer) {
+        // Format the content as Question: <question>\nAnswer: <answer>
+        const formattedContent = `Question: ${similar.question}\nAnswer: ${similar.answer}`;
+        
+        bodyContent[fieldNames[index]] = [
+          {
+            "value": formattedContent,
+            "format": "full_html"
+          }
+        ];
+      }
+    });
+    
+    // We don't need to set field_answer separately anymore
+    // as each similar question field now includes both question and answer
+  }
 
   try {
     // Log the full request details
