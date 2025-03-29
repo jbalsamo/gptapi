@@ -1,4 +1,4 @@
-import logger from "../utils/logger.js";
+import logger from "../utils/logger";
 
 interface DrupalLoginResponse {
   Cookie: string;
@@ -43,7 +43,7 @@ const deduplicateArray = <T>(array: T[], key: keyof T): T[] => {
 /**
  * Logs in to Drupal using the provided URL.
  */
-export const loginDrupal = async (
+const loginDrupal = async (
   u: string,
   uname: string,
   pword: string
@@ -79,7 +79,7 @@ export const loginDrupal = async (
 /**
  * Retrieves a list of submitted questions from the specified URL.
  */
-export const getQuestions = async (
+const getQuestions = async (
   u: string,
   csrf: string,
   cookies: string
@@ -106,7 +106,7 @@ export const getQuestions = async (
 /**
  * Retrieves a list of updated questions from the specified URL.
  */
-export const getUpdates = async (
+const getUpdates = async (
   u: string,
   csrf: string,
   cookies: string
@@ -133,7 +133,7 @@ export const getUpdates = async (
 /**
  * Retrieves a list of pending questions from the specified URL.
  */
-export const getPendingQuestions = async (
+const getPendingQuestions = async (
   u: string,
   csrf: string,
   cookies: string
@@ -160,7 +160,7 @@ export const getPendingQuestions = async (
 /**
  * Updates a Drupal node with the provided information.
  */
-export const post2Drupal = async (
+const post2Drupal = async (
   u: string,
   csrf: string,
   result: DrupalNodeUpdateResult
@@ -178,7 +178,12 @@ export const post2Drupal = async (
   };
 
   // Format sources properly for Drupal
-  const formattedSources = [];
+  interface FormattedSource {
+    uri: string;
+    title: string;
+  }
+
+  let formattedSources: FormattedSource[] = [];
   if (result.citations && result.citations.length > 0) {
     formattedSources = result.citations.map((source) => ({
       uri: source.url || "",
@@ -251,9 +256,59 @@ export const post2Drupal = async (
 };
 
 /**
+ * Posts similar questions and answers to Drupal.
+ */
+const postSimilar2Drupal = async (
+  u: string,
+  csrf: string,
+  result: {
+    nid: string;
+    similarAnswers: Array<{
+      question: string;
+      answer: string;
+    }>;
+    Cookie: string;
+  }
+): Promise<any> => {
+  logger.debug(`Posting similar answers for node ${result.nid}`);
+
+  const headersList = {
+    "Accept": "*/*",
+    "X-CSRF-Token": csrf,
+    "Cookie": result.Cookie,
+    "Content-Type": "application/json",
+  };
+
+  const bodyContent = {
+    "field_similar_answers": result.similarAnswers.map(qa => ({
+      question: qa.question,
+      answer: qa.answer,
+    })),
+  };
+
+  try {
+    const response = await fetch(`${u}node/${result.nid}?_format=json`, {
+      method: "PATCH",
+      headers: headersList,
+      body: JSON.stringify(bodyContent),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update similar answers: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    logger.error("Error in postSimilar2Drupal:", error);
+    throw error;
+  }
+};
+
+/**
  * Logs out the user from Drupal.
  */
-export const logoutDrupal = async (
+const logoutDrupal = async (
   u: string,
   lo_token: string
 ): Promise<any> => {
@@ -262,4 +317,14 @@ export const logoutDrupal = async (
   const response = await fetch(url);
   const userInfo = await response.text();
   return await userInfo;
+};
+
+export {
+  loginDrupal,
+  logoutDrupal,
+  post2Drupal,
+  getQuestions,
+  getUpdates,
+  getPendingQuestions,
+  postSimilar2Drupal,
 };

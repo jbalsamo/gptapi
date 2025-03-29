@@ -5,31 +5,64 @@
  * @author Joseph Balsamo <https://github.com/josephbalsamo
  */
 
-import { rateLimiters } from "./rateLimiter.js";
+import { rateLimiters } from "./rateLimiter";
+
+interface AzureError extends Error {
+  message: string;
+  name: string;
+  status?: number;
+  code?: string;
+}
+
+interface AzureDocument {
+  content: string;
+  title: string;
+  source?: string;
+  category?: string;
+  '@search.score'?: number;
+  '@search.rerankerScore'?: number;
+  '@search.captions'?: Array<{ text: string }>;
+}
+
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface ChatCompletionRequest {
+  messages: ChatMessage[];
+  temperature?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  max_tokens?: number;
+  stop?: string | string[] | null;
+}
 
 interface AzureOpenAIResponse {
   success: boolean;
   answer?: string;
   error?: string;
-  details?: any;
+  details?: unknown;
+  searchResults?: AzureDocument[];
 }
 
 interface SearchConfig {
   top?: number;
   select?: string[];
   semanticConfiguration?: string;
-  filter?: any;
+  filter?: string;
   orderBy?: string;
   includeTotalCount?: boolean;
 }
 
 interface SearchResult {
   success: boolean;
-  results: Array<any>;
+  results: AzureDocument[];
   count?: number;
-  coverage?: any;
+  coverage?: unknown;
   error?: string;
-  details?: any;
+  details?: unknown;
 }
 
 /**
@@ -53,24 +86,26 @@ export const submitQuestionGeneralGPT = async (
   try {
     await rateLimiters.chatCompletions.waitForToken();
 
+    const requestBody: ChatCompletionRequest = {
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: question },
+      ],
+      temperature: 0.7,
+      top_p: 0.95,
+      frequency_penalty: 0,
+      presence_penalty: 0,
+      max_tokens: 800,
+      stop: null,
+    };
+
     const response = await fetch(`${base}/openai/deployments/${model}/chat/completions?api-version=2023-07-01-preview`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "api-key": apiKey,
       },
-      body: JSON.stringify({
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: question },
-        ],
-        temperature: 0.7,
-        top_p: 0.95,
-        frequency_penalty: 0,
-        presence_penalty: 0,
-        max_tokens: 800,
-        stop: null,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -82,11 +117,14 @@ export const submitQuestionGeneralGPT = async (
       success: true,
       answer: data.choices[0].message.content.trim(),
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error in submitQuestionGeneralGPT:", error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    
     return {
       success: false,
-      error: error.message,
+      error: errorMessage,
       details: error,
       answer: "I apologize, but I encountered an error while processing your question. Please try again later.",
     };
@@ -106,7 +144,7 @@ export const submitQuestionDocuments = async (
   indexName: string,
   model: string = "gpt-4o",
   searchType: "vector" | "keyword" | "semantic" = "vector",
-  searchConfig: SearchConfig = {}
+  searchConfig: Partial<SearchConfig> = {}
 ): Promise<AzureOpenAIResponse> => {
   try {
     // First, search for relevant documents
@@ -124,9 +162,11 @@ export const submitQuestionDocuments = async (
     }
 
     // Format documents for context
-    const context = searchResults.results
-      .map(doc => `${doc.content}\nSource: ${doc.title || "Unknown"}`)
-      .join("\n\n");
+    const context = searchResults.results && searchResults.results.length > 0
+      ? searchResults.results
+          .map(doc => `${doc.content}\nSource: ${doc.title || "Unknown"}`)
+          .join("\n\n")
+      : "No relevant documents found.";
 
     // Submit to Azure OpenAI with context
     const response = await submitQuestionGeneralGPT(
@@ -141,11 +181,14 @@ export const submitQuestionDocuments = async (
       ...response,
       searchResults: searchResults.results,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error in submitQuestionDocuments:", error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    
     return {
       success: false,
-      error: error.message,
+      error: errorMessage,
       details: error,
       answer: "I apologize, but I encountered an error while processing your question with the available documents. Please try again later.",
     };
@@ -164,8 +207,8 @@ export const querySearchIndex = async ({
   top = 5,
   select = ["content", "title"],
   semanticConfiguration = "",
-  filter = null,
-  orderBy = null,
+  filter = undefined,
+  orderBy = undefined,
   includeTotalCount = false,
 }: {
   searchEndpoint: string;
@@ -176,7 +219,7 @@ export const querySearchIndex = async ({
   top?: number;
   select?: string[];
   semanticConfiguration?: string;
-  filter?: any;
+  filter?: string;
   orderBy?: string;
   includeTotalCount?: boolean;
 }): Promise<SearchResult> => {
@@ -188,7 +231,7 @@ export const querySearchIndex = async ({
       "api-key": searchKey,
     };
 
-    const searchParams: any = {
+    const searchParams: Record<string, unknown> = {
       count: includeTotalCount,
       select: select.join(","),
       top,
@@ -229,18 +272,25 @@ export const querySearchIndex = async ({
     }
 
     const data = await response.json();
+    
+    // Type assertion for the response data
+    const documents = (data.value || []) as AzureDocument[];
+    
     return {
       success: true,
-      results: data.value,
+      results: documents,
       count: data["@odata.count"],
       coverage: data["@search.coverage"],
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error in querySearchIndex:", error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    
     return {
       success: false,
       results: [],
-      error: error.message,
+      error: errorMessage,
       details: error,
     };
   }
@@ -248,18 +298,17 @@ export const querySearchIndex = async ({
 
 /**
  * Generates vector embeddings for text using Azure OpenAI
- * @param {string} text - The text to generate embeddings for
- * @returns {Promise<number[]>} The vector embedding
  */
-async function generateEmbedding(text: string): Promise<number[]> {
+export const generateEmbedding = async (text: string): Promise<number[]> => {
   // Use text-embedding-ada-002 model for embeddings
   const url =
     "https://azopenai-pilot.openai.azure.com/openai/deployments/text-embedding-ada-002/embeddings?api-version=2023-05-15";
+
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "api-key": process.env.AZ_API_KEY,
+      "api-key": process.env.AZ_API_KEY || "",
     },
     body: JSON.stringify({
       input: text,
@@ -267,12 +316,9 @@ async function generateEmbedding(text: string): Promise<number[]> {
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Failed to generate embedding: ${response.status} - ${errorText}`
-    );
+    throw new Error(`Embedding request failed: ${response.status}`);
   }
 
   const data = await response.json();
   return data.data[0].embedding;
-}
+};

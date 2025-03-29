@@ -5,51 +5,153 @@ import { serve } from "@hono/node-server";
 import { config } from "dotenv";
 import { Hono } from "hono";
 import { logger } from "hono/logger";
-import { endTime, setMetric, startTime, timing } from "hono/timing";
+import { appConfig } from "./config/config";
+import { prompts } from "./constants/prompts";
 import {
   submitQuestionDocuments,
   submitQuestionGeneralGPT,
-} from "./libraries/azureHelpers.ts";
+} from "./libraries/azureHelpers";
 import {
   loginDrupal,
   logoutDrupal,
   post2Drupal,
   postSimilar2Drupal,
-} from "./libraries/drupalHelpers.ts";
+} from "./libraries/drupalHelpers";
+import { appLogger } from "./utils/logger";
 
 // Load environment variables
-config({ path: "/etc/gptbot/.env" });
+config();
 
-// Constants
-const answerPrompt = `
-  *     answer question as a medical professional.
-  *     If the question is not medical, health, legally, or psychologically related then inform the user that you can only answer questions in one of those topics.
-  *     The answer should be readable at an 7th grade reading level.
-  *     Explain any jargon or domain specific language that may need clarification.
-  *     Avoid using chemical names and classifications that people may not know or understand.
-  *     Please ensure that the response avoids technical jargon or domain-specific language and provides explanations or simplifications where necessary.
-  *     Do not include drug classes, instead using brand and generic common names.
-  *     Detect the language of the question and answer in that language.
-  *     Blank out curses, foul language, and derogatory of offensive language in the answer at all times.
-  *     If question is not in a recognizable language, display the message 'You have used an unsupported language. Please choose a different language to see if its supported.', in each of these languages: English, Spanish, French, Mandarin, Japanese, Korean, and Hindi.
-`;
+// Initialize constants
+const port = 3000;
 
-const drupalUrl = process.env.DRUPAL_BASE_URL;
-const azBaseUrl = process.env.AZ_BASE_URL;
-const azApiKey = process.env.AZ_API_KEY;
-const azSearchUrl = process.env.AZ_SEARCH_URL;
-const azSearchKey = process.env.AZ_SEARCH_KEY;
-const azIndexName = process.env.AZ_INDEX_NAME;
-const azPMIndexName = process.env.AZ_PM_INDEX_NAME;
-const azAnswersIndexName = "vet";
+// Initialize Drupal connection
+const drupalUrl = appConfig.drupal.baseUrl;
+const azBaseUrl = appConfig.azure.baseUrl;
+const azApiKey = appConfig.azure.apiKey;
+const azSearchEndpoint = appConfig.azure.search.endpoint;
+const azSearchKey = appConfig.azure.search.key;
+const azIndexName = appConfig.azure.search.indexName;
+const azPMIndexName = appConfig.azure.search.pmVectorIndexName;
+const azDeploymentName = appConfig.azure.deployment.name;
+const azAnswersIndexName = appConfig.azure.search.answersIndexName;
 
-const uname = process.env.DRUPAL_USERNAME;
-const pword = process.env.DRUPAL_PASSWORD;
+// Initialize Drupal credentials
+const uname = appConfig.drupal.username;
+const pword = appConfig.drupal.password;
+
+interface DrupalNode {
+  nid: string;
+  field_enter_question?: {
+    value: string;
+  }[];
+}
+
+interface SimilarAnswer {
+  question: string;
+  answer: string;
+}
+
+interface AzureOpenAIResponse {
+  answer?: string;
+  citations?: Array<{
+    url: string;
+    filepath: string;
+  }>;
+}
+
+interface AzureResponse {
+  answer: string;
+  citations?: Array<{
+    url: string;
+    filepath: string;
+  }>;
+}
+
+interface QuestionResponse {
+  dataDocs: AzureResponse;
+  dataGPT: AzureResponse;
+  dataPMA: AzureResponse;
+  dataSummary: string | AzureResponse;
+}
+
+// Helper function to ensure Azure response has required fields
+function ensureAzureResponse(response: AzureOpenAIResponse): AzureResponse {
+  if (!response.answer) {
+    return {
+      answer: "No answer available",
+      citations: response.citations,
+    };
+  }
+  return {
+    answer: response.answer,
+    citations: response.citations,
+  };
+}
 
 const app = new Hono();
 
-app.use(timing());
+// Add middleware
 app.use(logger());
+
+// Add error handler middleware
+app.onError((err, c) => {
+  appLogger.error("Server error:", err);
+  return c.json(
+    {
+      status: "error",
+      message:
+        process.env.NODE_ENV === "production"
+          ? "Internal server error"
+          : err.message,
+    },
+    500
+  );
+});
+
+// Add not found handler
+app.notFound((c) => {
+  appLogger.warn(`Route not found: ${c.req.url}`);
+  return c.json(
+    {
+      status: "error",
+      message: "Not found",
+    },
+    404
+  );
+});
+
+// Add request logging middleware
+app.use("*", async (c, next) => {
+  const start = Date.now();
+  await next();
+  const ms = Date.now() - start;
+  appLogger.info(`${c.req.method} ${c.req.url} - ${ms}ms`);
+});
+
+// Add request validation middleware
+app.use("/api/*", async (c, next) => {
+  if (!c.req.header("content-type")?.includes("application/json")) {
+    appLogger.warn("Invalid content type:", c.req.header("content-type"));
+    return c.json(
+      {
+        status: "error",
+        message: "Content-Type must be application/json",
+      },
+      400
+    );
+  }
+  await next();
+});
+
+// Log startup
+appLogger.info(`Server initializing with configuration:
+  - Drupal URL: ${drupalUrl}
+  - Azure Search Endpoint: ${azSearchEndpoint}
+  - Azure Index: ${azIndexName}
+  - Azure PM Index: ${azPMIndexName}
+  - Port: ${port}
+`);
 
 // Functions
 
@@ -57,19 +159,14 @@ app.use(logger());
  * Searches for similar questions and answers in the knowledge base using Azure Cognitive Search.
  * Uses AI to find and extract the most relevant QA pairs based on semantic similarity.
  *
- * @param node - The node context for the search (type: any)
+ * @param node - The node context for the search (type: DrupalNode)
  * @param question - The user's question to find similar matches for
- * @returns Promise<Array<{
- *   nid?: string,
- *   category?: string,
- *   question: string,
- *   answer: string
- * }>> Array of similar QA pairs, or a default "not found" message if no matches
+ * @returns Promise<Array<SimilarAnswer>> Array of similar QA pairs, or a default "not found" message if no matches
  *
  * @requires Environment Variables:
  *   - azBaseUrl: Azure base URL
  *   - azApiKey: Azure API key
- *   - azSearchUrl: Azure Cognitive Search URL
+ *   - azSearchEndpoint: Azure Cognitive Search endpoint
  *   - azSearchKey: Azure Cognitive Search key
  *   - azAnswersIndexName: Name of the answers index
  *
@@ -77,162 +174,159 @@ app.use(logger());
  * const similarQAs = await findSimilarAnswers(nodeContext, "What are the symptoms of diabetes?");
  * // Returns: [{nid: "123", category: "Health", question: "...", answer: "..."}]
  */
-const findSimilarAnswers = async (node: any, question: string) => {
-  const systemPrompt = `
-  You are an AI assistant that helps people extract the top relevant question and answer that is similar to the question I enter.
+const findSimilarAnswers = async (
+  node: DrupalNode,
+  question: string
+): Promise<SimilarAnswer[]> => {
+  // Environment variables are validated by config.ts
+  const systemPrompt = prompts.findSimilarAnswers.systemPrompt;
+  const userPrompt = prompts.findSimilarAnswers.userPrompt.replace(
+    "{question}",
+    question
+  );
 
-  ### Output Format:
-  Return a JSON  with an array with the 3 top items, each containing the fields nid, category, question, answer.
-
-  If no closely related questions or answers are found, return the following JSON array:
-  [
-    {
-      question: "Sorry, we didn’t find any similar questions:",
-      answer: "Please check back later for your question to be answered on our Health Answers page."
-    }
-  ]
-
-  ### Example Output
-  [
-    {
-       nid: nid_1,
-       category: category_1,
-       question: question_1,
-       answer: answer_1
-    }
-  ]
-  `;
-
-  const userPrompt = `
-    Find the top 3 most relevant questions and answers similar to: '${question}'\nReturn it as a JSON Array with 3 json objects containing the 'question' and 'answer'. Do not use any markdown and just return the string. Only return questions and answers that are between the '---' and where there are 'question:' and 'answer:' pairs, with the appropriate attribute name.
-    If no closely related questions or answers are found, return the following JSON array:
-    [
-      {
-        question: "No closely related questions or answers found:",
-        answer: "Please check back later for your submission to be answered on our Health Answers page."
-      }
-    ]
-
-    All results must agree in subject and context.
-  `;
-
-  let similarAnswers = await submitQuestionDocuments(
+  const response = await submitQuestionDocuments(
     userPrompt,
     systemPrompt,
     azBaseUrl,
     azApiKey,
-    azSearchUrl,
+    azSearchEndpoint,
     azSearchKey,
-    azAnswersIndexName
+    azAnswersIndexName,
+    azDeploymentName
   );
 
-  //console.log("similarAnswers:", similarAnswers.answer);
+  // Ensure we have a valid response
+  const azureResponse = ensureAzureResponse(response);
 
-  const parsedSimilarAnswers = JSON.parse(similarAnswers.answer);
-  return parsedSimilarAnswers;
+  try {
+    // Parse the answer string into an array of SimilarAnswer
+    const parsedAnswers = JSON.parse(azureResponse.answer);
+
+    // Validate the parsed data is an array
+    if (!Array.isArray(parsedAnswers)) {
+      appLogger.warn("Azure response was not an array:", azureResponse.answer);
+      return [
+        {
+          question: "No closely related questions or answers found",
+          answer: "Please try rephrasing your question or ask something else.",
+        },
+      ];
+    }
+
+    // Ensure each answer has the required fields
+    return parsedAnswers.map((answer: any) => ({
+      question: answer.question || "Question not available",
+      answer: answer.answer || "Answer not available",
+    }));
+  } catch (error) {
+    appLogger.error("Failed to parse Azure response:", error);
+    return [
+      {
+        question: "No closely related questions or answers found",
+        answer: "Please try rephrasing your question or ask something else.",
+      },
+    ];
+  }
 };
 
 /**
  * Processes and answers user questions using Azure AI services with context from relevant documents.
  * Implements a RAG (Retrieval Augmented Generation) pattern to provide accurate, contextual responses.
  *
- * @param node - The node context for processing the question (type: any)
+ * @param node - The node context for processing the question (type: DrupalNode)
  * @param session_id - Unique identifier for the current session
  * @param question - The user's question to be answered
- * @returns Promise<{
- *   answer: string,
- *   similar?: Array<{
- *     question: string,
- *     answer: string
- *   }>,
- *   documents?: Array<string>
- * }> Object containing the answer and optional similar QA pairs
+ * @returns Promise<QuestionResponse> Object containing the answer and optional similar QA pairs
  *
  * @requires Environment Variables:
  *   - azBaseUrl: Azure base URL for AI services
  *   - azApiKey: Azure API key
- *   - azSearchUrl: Azure Cognitive Search URL
+ *   - azSearchEndpoint: Azure Cognitive Search endpoint
  *   - azSearchKey: Azure Cognitive Search key
  *   - azIndexName: Name of the primary search index
  *
  * @throws {Error} When Azure AI services fail to process the question
  * @throws {Error} When document retrieval fails
  */
-const answerQuestions = async (node: any, session_id: any, question: any) => {
-  // get answers from Azure AI
-  let summaryPrompt, dataSummary;
-  let dataDocs = await submitQuestionDocuments(
-    question,
-    answerPrompt,
-    azBaseUrl,
-    azApiKey,
-    azSearchUrl,
-    azSearchKey,
-    azIndexName
-  );
+const answerQuestions = async (
+  node: DrupalNode,
+  session_id: string,
+  question: string
+): Promise<QuestionResponse> => {
+  const answerPrompt = prompts.answerQuestions.answerPrompt;
 
-  let dataPMA = await submitQuestionDocuments(
-    question,
-    answerPrompt,
-    azBaseUrl,
-    azApiKey,
-    azSearchUrl,
-    azSearchKey,
-    azPMIndexName
-  );
+  // Create all promises for parallel execution
+  const [docsResponse, gptResponse, pmaResponse] = await Promise.all([
+    // Get answers from documents
+    submitQuestionDocuments(
+      question,
+      answerPrompt,
+      azBaseUrl,
+      azApiKey,
+      azSearchEndpoint,
+      azSearchKey,
+      azIndexName,
+      azDeploymentName,
+      "semantic",
+      {}
+    ),
+    // Get GPT response
+    submitQuestionGeneralGPT(
+      question,
+      answerPrompt,
+      azBaseUrl,
+      azApiKey,
+      azDeploymentName
+    ),
+    // Get PMA response
+    submitQuestionDocuments(
+      question,
+      answerPrompt,
+      azBaseUrl,
+      azApiKey,
+      azSearchEndpoint,
+      azSearchKey,
+      azPMIndexName,
+      azDeploymentName
+    ),
+  ]);
 
-  let dataGPT = await submitQuestionGeneralGPT(
-    question,
-    answerPrompt,
-    azBaseUrl,
-    azApiKey
-  );
+  // Ensure all responses are valid
+  const dataDocs = ensureAzureResponse(docsResponse);
+  const dataGPT = ensureAzureResponse(gptResponse);
+  const dataPMA = ensureAzureResponse(pmaResponse);
 
-  if (
-    dataDocs.answer.match(
-      "The requested information is not available in the retrieved data."
-    ) == null ||
-    dataDocs.answer.match(
-      "retrieved documents do not provide a comprehensive answer"
-    ) == null
-  ) {
-    summaryPrompt =
-      "Combine the three answers to the question below into a concise, clear, and readable summary of the two answers: \n\n" +
-      "Question: " +
-      question +
-      "\n\n" +
-      "Answer 1: " +
-      dataDocs.answer +
-      "\n\n" +
-      "Answer 2: " +
-      dataGPT.answer +
-      "\n\n" +
-      "Answer 3: " +
-      dataPMA.answer +
-      "\n\n" +
-      "The summary should be readable at an 7th grade reading level and explain any jargon or domain specific language that may need clarification.\n" +
-      "Please ensure that the response avoids technical jargon or domain-specific language and provides explanations or simplifications where necessary.\n" +
-      "If the summary contains any fringe research, homeopathic medicine, or medically untested information, it should be annotated as such in the summary.\n";
+  // Generate summary if all data is available
+  let dataSummary: string | AzureResponse;
+  if (dataDocs.answer && dataGPT.answer && dataPMA.answer) {
+    const summaryPrompt = prompts.answerQuestions.summaryPrompt(
+      question,
+      dataDocs,
+      dataGPT,
+      dataPMA
+    );
 
-    dataSummary = await submitQuestionGeneralGPT(
+    const summaryResponse = await submitQuestionGeneralGPT(
       summaryPrompt,
       answerPrompt,
       azBaseUrl,
-      azApiKey
+      azApiKey,
+      azDeploymentName
     );
+    dataSummary = ensureAzureResponse(summaryResponse);
   } else {
-    dataSummary = "No answer available.";
+    dataSummary = {
+      answer: "Unable to generate summary due to missing data",
+      citations: [],
+    };
   }
 
   return {
-    status: "success",
-    node: node,
-    session_id: session_id,
-    question: question,
-    dataDocs: dataDocs,
-    dataPMA: dataPMA,
-    dataGPT: dataGPT,
-    dataSummary: dataSummary,
+    dataDocs,
+    dataGPT,
+    dataPMA,
+    dataSummary,
   };
 };
 
@@ -256,7 +350,7 @@ const answerQuestions = async (node: any, session_id: any, question: any) => {
  *   - AZURE_OPENAI_ENDPOINT: Azure OpenAI API endpoint
  *   - AZURE_OPENAI_KEY: Azure OpenAI API key
  *   - AZURE_EMBEDDING_DEPLOYMENT: Name of the embedding model deployment
- *   - azSearchUrl: Azure Cognitive Search endpoint
+ *   - azSearchEndpoint: Azure Cognitive Search endpoint
  *   - azSearchKey: Azure Cognitive Search API key
  *   - azIndexName: Name of the search index
  *
@@ -270,40 +364,47 @@ const queryRAGInstance = async (
   useVectorSearch: boolean = true
 ): Promise<Array<any>> => {
   try {
-    if (!azSearchUrl || !azSearchKey || !azIndexName) {
-      throw new Error('Azure Cognitive Search configuration is missing');
+    if (!azSearchEndpoint || !azSearchKey || !azIndexName) {
+      throw new Error("Azure Cognitive Search configuration is missing");
     }
 
-    const searchClient = `${azSearchUrl}/indexes/${azIndexName}/docs/search?api-version=2023-11-01`;
+    const searchClient = `${azSearchEndpoint}/indexes/${azIndexName}/docs/search?api-version=2023-11-01`;
 
     // Generate vector embedding for the query
     const openaiEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
     const openaiKey = process.env.AZURE_OPENAI_KEY;
     const embeddingDeployment = process.env.AZURE_EMBEDDING_DEPLOYMENT;
 
-    if (useVectorSearch && (!openaiEndpoint || !openaiKey || !embeddingDeployment)) {
-      throw new Error('Azure OpenAI configuration for embeddings is missing');
+    if (
+      useVectorSearch &&
+      (!openaiEndpoint || !openaiKey || !embeddingDeployment)
+    ) {
+      throw new Error("Azure OpenAI configuration for embeddings is missing");
     }
 
     let vectorQuery;
     if (useVectorSearch) {
       // Generate embedding using Azure OpenAI
+      if (!openaiKey) {
+        throw new Error("Azure OpenAI API key is not configured");
+      }
+
       const embeddingResponse = await fetch(
         `${openaiEndpoint}/openai/deployments/${embeddingDeployment}/embeddings?api-version=2023-05-15`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'api-key': openaiKey
+            "Content-Type": "application/json",
+            "api-key": openaiKey,
           },
           body: JSON.stringify({
-            input: query
-          })
+            input: query,
+          }),
         }
       );
 
       if (!embeddingResponse.ok) {
-        throw new Error('Failed to generate embedding');
+        throw new Error("Failed to generate embedding");
       }
 
       const embeddingData = await embeddingResponse.json();
@@ -319,29 +420,32 @@ const queryRAGInstance = async (
       captions: "extractive",
       answers: "extractive",
       queryLanguage: "en-us",
-      speller: "lexicon"
+      speller: "lexicon",
     };
 
     // Add vector search if enabled
     if (useVectorSearch && vectorQuery) {
-      searchBody.vectors = [{
-        value: vectorQuery,
-        fields: ["embedding"],
-        k: topK
-      }];
+      searchBody.vectors = [
+        {
+          value: vectorQuery,
+          fields: ["embedding"],
+          k: topK,
+        },
+      ];
       // Hybrid search configuration
       searchBody.vectorFields = ["embedding"];
-      searchBody.select = "id,content,embedding,@search.score,@search.rerankerScore";
+      searchBody.select =
+        "id,content,embedding,@search.score,@search.rerankerScore";
       searchBody.rerankerConfiguration = "default";
     }
 
     const response = await fetch(searchClient, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'api-key': azSearchKey
+        "Content-Type": "application/json",
+        "api-key": azSearchKey,
       },
-      body: JSON.stringify(searchBody)
+      body: JSON.stringify(searchBody),
     });
 
     if (!response.ok) {
@@ -353,18 +457,18 @@ const queryRAGInstance = async (
     // Transform results to a more usable format
     const formattedResults = searchResults.value.map((result: any) => ({
       id: result.id,
-      score: useVectorSearch ?
-        (result['@search.rerankerScore'] || result['@search.score']) :
-        result['@search.score'],
+      score: useVectorSearch
+        ? result["@search.rerankerScore"] || result["@search.score"]
+        : result["@search.score"],
       content: result.content,
-      caption: result['@search.captions']?.[0]?.text || '',
-      highlights: result['@search.highlights']?.content || [],
-      vectorScore: result['@search.vectorScore']
+      caption: result["@search.captions"]?.[0]?.text || "",
+      highlights: result["@search.highlights"]?.content || [],
+      vectorScore: result["@search.vectorScore"],
     }));
 
     return formattedResults;
   } catch (error) {
-    console.error('Error querying Azure Cognitive Search:', error);
+    console.error("Error querying Azure Cognitive Search:", error);
     throw error;
   }
 };
@@ -394,92 +498,148 @@ app.get("/hello/:name", (c) => {
 // });
 
 app.post("/api/find-similar", async (c) => {
-  setMetric(c, "region", "us-east-1");
-  startTime(c, "similar");
-  const body = await c.req.json();
-  let nid = body.entity.nid[0].value;
-  let question = body.entity.field_enter_question[0].value;
+  try {
+    const body = await c.req.json();
 
-  const similarAnswers = await findSimilarAnswers(nid, question);
-  endTime(c, "similar");
-  //console.log("Returns: ", similarAnswers[0].question);
+    if (
+      !body.entity?.nid?.[0]?.value ||
+      !body.entity?.field_enter_question?.[0]?.value
+    ) {
+      appLogger.warn("Invalid request body:", body);
+      return c.json(
+        {
+          status: "error",
+          message: "Missing required fields: nid or question",
+        },
+        400
+      );
+    }
 
-  const { Cookie, csrf_token, logout_token } = await loginDrupal(
-    drupalUrl,
-    uname,
-    pword
-  );
-  let similar2Post;
+    const nid = body.entity.nid[0].value;
+    const question = body.entity.field_enter_question[0].value;
 
-  if (
-    !similarAnswers[0].question.includes(
-      "No closely related questions or answers found"
-    )
-  ) {
-    similar2Post = {
-      "Cookie": Cookie,
-      "field_similar_question_1": `
-          ${similarAnswers[0].question}\n
-          ${similarAnswers[0].answer}
-        `,
-      "field_similar_question_2": `
-          ${similarAnswers[1].question}\n
-          ${similarAnswers[1].answer}
-        `,
-      "field_similar_question_3": `
-          ${similarAnswers[2].question}\n
-          ${similarAnswers[2].answer}
-        `,
-    };
-  } else {
-    similar2Post = {
-      "Cookie": Cookie,
-      "field_no_similar_questions": `
-          ${similarAnswers[0].question}\n
-          ${similarAnswers[0].answer}
-        `,
-    };
+    appLogger.info(`Processing question for nid ${nid}: ${question}`);
+
+    const similarAnswers = await findSimilarAnswers(
+      {
+        nid,
+        field_enter_question: [{ value: question }],
+      },
+      question
+    );
+
+    try {
+      const { Cookie, csrf_token, logout_token } = await loginDrupal(
+        drupalUrl,
+        uname,
+        pword
+      );
+      let similar2Post;
+
+      if (
+        !similarAnswers[0].question.includes(
+          "No closely related questions or answers found"
+        )
+      ) {
+        similar2Post = [
+          {
+            question: similarAnswers[0].question,
+            answer: similarAnswers[0].answer,
+          },
+          {
+            question: similarAnswers[1].question,
+            answer: similarAnswers[1].answer,
+          },
+          {
+            question: similarAnswers[2].question,
+            answer: similarAnswers[2].answer,
+          },
+        ];
+      } else {
+        similar2Post = [
+          {
+            question: similarAnswers[0].question,
+            answer: similarAnswers[0].answer,
+          },
+        ];
+      }
+
+      console.log("Post sent to Drupal: ", similar2Post);
+
+      const data = await postSimilar2Drupal(drupalUrl, csrf_token, {
+        nid,
+        similarAnswers: similar2Post,
+        Cookie,
+      });
+
+      const user = await logoutDrupal(drupalUrl, logout_token);
+
+      return c.json({
+        status: "success",
+        nid: nid,
+      });
+    } catch (error) {
+      appLogger.error("Error posting to Drupal:", error);
+      return c.json(
+        {
+          status: "error",
+          message: "Failed to post to Drupal",
+        },
+        500
+      );
+    }
+  } catch (error) {
+    appLogger.error("Error finding similar answers:", error);
+    return c.json(
+      {
+        status: "error",
+        message: "Failed to find similar answers",
+      },
+      500
+    );
   }
-
-  console.log("Post sent to Drupal: ", similar2Post);
-
-  const data = await postSimilar2Drupal(
-    drupalUrl,
-    csrf_token,
-    nid,
-    similar2Post
-  );
-
-  //console.log(data);
-  const user = await logoutDrupal(drupalUrl, logout_token);
-
-  return c.json({
-    status: "success",
-    nid: nid,
-  });
 });
 
 app.post("/api/get-answers", async (c) => {
-  const body = await c.req.json();
-  setMetric(c, "region", "us-east-1");
+  try {
+    const body = await c.req.json();
 
-  startTime(c, "gpt");
-  let data = await answerQuestions(body.node, body.session_id, body.question);
-  endTime(c, "gpt");
-  //console.log(data);
-  return c.json({
-    node: body.node,
-    session_id: body.session_id,
-    question: body.question,
-    answerDocs: data.dataDocs.answer,
-    //citationDocs: data.dataDocs.citations,
-    answerPMA: data.dataPMA.answer,
-    answerGPT: data.dataGPT.answer,
-    answerSummary: data.dataSummary.answer,
-  });
+    if (!body.node || !body.session_id || !body.question) {
+      appLogger.warn("Invalid request body:", body);
+      return c.json(
+        {
+          status: "error",
+          message: "Missing required fields: node, session_id, or question",
+        },
+        400
+      );
+    }
+
+    let data = await answerQuestions(body.node, body.session_id, body.question);
+    return c.json({
+      node: body.node,
+      session_id: body.session_id,
+      question: body.question,
+      answerDocs: data.dataDocs.answer,
+      answerPMA: data.dataPMA.answer,
+      answerGPT: data.dataGPT.answer,
+      answerSummary:
+        typeof data.dataSummary === "string"
+          ? data.dataSummary
+          : data.dataSummary.answer,
+    });
+  } catch (error) {
+    appLogger.error("Error getting answers:", error);
+    return c.json(
+      {
+        status: "error",
+        message: "Failed to get answers",
+      },
+      500
+    );
+  }
 });
 
-const port = 3000;
 console.log(`Server is running on port http://localhost:${port}`);
 
 serve({

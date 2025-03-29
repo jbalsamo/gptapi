@@ -17,6 +17,7 @@ const envSchema = joi
     AZ_SEARCH_KEY: joi.string().required(),
     AZ_INDEX_NAME: joi.string().required(),
     AZ_PM_VECTOR_INDEX_NAME: joi.string().required(),
+    AZ_ANSWERS_INDEX_NAME: joi.string().required(),
     AZ_DEPLOYMENT_NAME: joi.string().required(),
     DRUPAL_USERNAME: joi.string().required(),
     DRUPAL_PASSWORD: joi.string().required(),
@@ -44,6 +45,7 @@ export const appConfig = {
       key: envVars.AZ_SEARCH_KEY,
       indexName: envVars.AZ_INDEX_NAME,
       pmVectorIndexName: envVars.AZ_PM_VECTOR_INDEX_NAME,
+      answersIndexName: envVars.AZ_ANSWERS_INDEX_NAME,
     },
     deployment: {
       name: envVars.AZ_DEPLOYMENT_NAME,
