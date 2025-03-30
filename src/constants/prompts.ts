@@ -44,25 +44,33 @@ export const prompts = {
       1. Understand the core topic and intent of the question
       2. Look for questions in the content that address similar topics or concerns
       3. Return the top 3 most relevant question-answer pairs
-      4. Format the results STRICTLY as a valid JSON array with no additional text or explanations
-      5. Only include questions and answers that are complete and make sense in context
-      6. Ensure all returned questions and answers are closely related to the original query
-      7. Be very strict about relevance - only return highly relevant matches
-      8. IMPORTANT: Process HTML content properly by escaping quotes and special characters
+      4. For each match, provide a relevance score from 0.0 to 1.0 indicating how relevant it is to the original question
+      5. Format the results STRICTLY as a valid JSON array with no additional text or explanations
+      6. Include questions and answers that are complete and make sense in context
+      7. Use a layered approach to relevance scoring:
+         - 0.9-1.0: Direct match to the question (same topic, same intent)
+         - 0.7-0.89: Strong relevance (same topic, related intent)
+         - 0.5-0.69: Moderate relevance (related topic, may help answer the question)
+         - 0.3-0.49: Weak relevance (tangentially related, provides some context)
+         - 0.0-0.29: Not relevant
+      8. Be generous with relevance - if content is even somewhat related to the health/medical topic in the question, include it with an appropriate score
+      9. IMPORTANT: Process HTML content properly by escaping quotes and special characters
 
       Example format (EXACTLY like this, with double quotes and escaped content):
       [
         {
           "question": "What are the symptoms of diabetes?",
-          "answer": "Common symptoms include increased thirst, frequent urination..."
+          "answer": "Common symptoms include increased thirst, frequent urination...",
+          "relevanceScore": 0.95
         }
       ]
 
-      If no relevant matches are found, return this exact JSON:
+      IMPORTANT: Even if you don't find perfect matches, return the most relevant health/medical content you can find with appropriate relevance scores. Only if there is absolutely nothing related, return this exact JSON:
       [
         {
           "question": "No closely related questions or answers found",
-          "answer": "Please try rephrasing your question or ask something else."
+          "answer": "Please check back for an answer to your question later.",
+          "relevanceScore": 0.0
         }
       ]
 
@@ -71,6 +79,7 @@ export const prompts = {
       2. Make sure to escape all quotes and special characters in HTML content.
       3. Verify that your response is valid JSON before returning it.
       4. Keep answers concise and focused to avoid JSON parsing errors.
+      5. The relevanceScore must be a number between 0.0 and 1.0, where 1.0 means perfectly relevant.
     `,
     userPrompt: `
       Please analyze the following question and find similar questions and answers from our knowledge base:
